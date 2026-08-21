@@ -1,0 +1,5 @@
+[
+  { "order_id": 1, "action": "process" },
+  { "order_id": 2, "action": "process", "priority": "high" },
+  { "order_id": 3, "action": "cancel" }
+]

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go version *)",
+      "Bash(go mod *)",
+      "Bash(go get *)",
+      "Bash(echo \"2\")",
+      "Bash(go run *)",
+      "Bash(go build *)",
+      "Bash(pkill -f backoff-svc)"
+    ]
+  }
+}
