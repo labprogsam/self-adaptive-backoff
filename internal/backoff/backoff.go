@@ -15,7 +15,7 @@ type Options struct {
 }
 
 func Retry[T any](opts Options, fn func() (T, error)) (T, error) {
-	var zero T
+	var emptyResult T
 	var lastErr error
 
 	for attempt := 0; attempt <= opts.MaxRetries; attempt++ {
@@ -36,7 +36,7 @@ func Retry[T any](opts Options, fn func() (T, error)) (T, error) {
 		time.Sleep(wait)
 	}
 
-	return zero, fmt.Errorf("todas as %d tentativas falharam, último erro: %w", opts.MaxRetries+1, lastErr)
+	return emptyResult, fmt.Errorf("todas as %d tentativas falharam, último erro: %w", opts.MaxRetries+1, lastErr)
 }
 
 func delay(base, maxDelay time.Duration, attempt int) time.Duration {

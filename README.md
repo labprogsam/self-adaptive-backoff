@@ -6,6 +6,48 @@ retornado. Em caso de erro (JSON inválido, falha de comunicação, timeout ou
 resposta de erro da API), o serviço tenta novamente usando **backoff
 exponencial** antes de desistir da mensagem.
 
+## Arquitetura
+
+```mermaid
+flowchart LR
+    subgraph Producer["Producer"]
+        P["cmd/producer\ninternal/producer"]
+        TF[("tasks.json")]
+        TF --> P
+    end
+
+    subgraph Broker["Message Broker"]
+        Q[["RabbitMQ\nfila: tasks"]]
+    end
+
+    subgraph Consumer["Consumer"]
+        C["cmd/consumer\ninternal/consumer"]
+        B{{"internal/backoff\nretry exponencial + jitter"}}
+        AC["internal/apiclient"]
+        C -- "1. delega chamada" --> AC
+        AC -- "2. erro" --> B
+        B -- "3. nova tentativa\n(backoff)" --> AC
+        C -. "ack / nack" .-> Q
+    end
+
+    subgraph External["Sistema Externo"]
+        API[/"API HTTP\nAPI_URL :9091"/]
+    end
+
+    P -- "publish" --> Q
+    Q -- "consume (Qos=1)" --> C
+    AC -- "POST /process" --> API
+    API -- "resposta 2xx / erro" --> AC
+
+    style B fill:#f9e79f,stroke:#b7950b,stroke-width:2px
+```
+
+- **Producer** — lê `tasks.json` e publica cada mensagem na fila do RabbitMQ.
+- **Broker (RabbitMQ)** — fila `tasks` que desacopla producer e consumer.
+- **Consumer** — consome uma mensagem por vez (`Qos(1)`), delega o envio ao `apiclient` e decide `ack`/`nack` conforme o resultado.
+- **Mecanismo de backoff** (`internal/backoff`) — componente isolado e genérico responsável pelas tentativas de reenvio; é o ponto principal onde serão exploradas variações da estratégia (exponencial atual, jitter, tetos, número de tentativas etc.).
+- **API externa** — serviço HTTP (`API_URL`) que efetivamente processa a tarefa; a comunicação com ela é o gatilho para acionar o backoff em caso de falha.
+
 ## Como funciona
 
 1. Conecta ao RabbitMQ e consome mensagens da fila (uma por vez, via `Qos(1)`).
