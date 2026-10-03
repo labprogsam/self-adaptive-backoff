@@ -10,7 +10,7 @@ exponencial** antes de desistir da mensagem.
 
 ![arquitetura](image.png)
 
-https://excalidraw.com/#json=mryVBov8aefkTbzBQ_hP-,pJGGjYXRunkoADG37VzG6A
+https://excalidraw.com/#json=VpGgq4FiHOlLCOuhQ3M6t,BSBUnwGBCuWeysPIMm8DvQ
 
 - **Producer** — lê `tasks.json` e publica cada mensagem na fila do RabbitMQ.
 - **Broker (RabbitMQ)** — fila `tasks` que desacopla producer e consumer.
@@ -28,7 +28,7 @@ https://excalidraw.com/#json=mryVBov8aefkTbzBQ_hP-,pJGGjYXRunkoADG37VzG6A
      processamento da mensagem (`ack`).
 3. Se qualquer etapa falhar, a mensagem é reprocessada com backoff
    exponencial: espera inicial de 500ms, dobrando a cada tentativa (com
-   jitter e teto de 30s), até 5 tentativas extras. Se todas falharem, a
+   jitter e teto de 30s), até 3 tentativas extras. Se todas falharem, a
    mensagem é descartada (`nack` sem requeue) para não travar a fila com uma
    mensagem "envenenada".
 4. Se a conexão com o RabbitMQ cair, o serviço reconecta automaticamente.
