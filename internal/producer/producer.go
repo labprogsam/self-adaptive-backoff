@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"os"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -16,6 +19,7 @@ func Run(cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("erro ao ler arquivo %q: %w", cfg.TasksFile, err)
 	}
+	log.Printf("producer: %d mensagens lidas de %s", len(messages), cfg.TasksFile)
 
 	conn, err := amqp.Dial(cfg.AMQPUrl)
 	if err != nil {
@@ -35,18 +39,44 @@ func Run(cfg config.Config) error {
 	}
 
 	for i, msg := range messages {
+		if i > 0 && cfg.ProducerRate > 0 {
+			time.Sleep(nextInterval(cfg.ProducerRate, cfg.ProducerPoisson))
+		}
+
 		err := ch.Publish("", q.Name, false, false, amqp.Publishing{
 			ContentType: "application/json",
+			MessageId:   fmt.Sprintf("%s-%d", cfg.RunID, i),
 			Body:        msg,
 		})
 		if err != nil {
 			return fmt.Errorf("erro ao publicar mensagem %d/%d: %w", i+1, len(messages), err)
 		}
-		fmt.Printf("mensagem %d/%d publicada: %s\n", i+1, len(messages), string(msg))
+		if len(msg) <= 200 {
+			fmt.Printf("mensagem %d/%d publicada: %s\n", i+1, len(messages), string(msg))
+		} else {
+			fmt.Printf("mensagem %d/%d publicada (%d bytes)\n", i+1, len(messages), len(msg))
+		}
 	}
 
-	log.Printf("%d mensagens publicadas na fila %q", len(messages), q.Name)
+	log.Printf("%d mensagens publicadas na fila %q (run_id=%s)", len(messages), q.Name, cfg.RunID)
 	return nil
+}
+
+// nextInterval calcula o intervalo até a próxima publicação para a taxa
+// (mensagens/segundo) e o padrão de chegada configurados (Seção 7.1). Com
+// poisson=true, o intervalo é exponencialmente distribuído com média
+// 1/rate, simulando chegadas independentes (Poisson); com poisson=false, o
+// intervalo é fixo em 1/rate.
+func nextInterval(rate float64, poisson bool) time.Duration {
+	mean := time.Duration(float64(time.Second) / rate)
+	if !poisson {
+		return mean
+	}
+	u := rand.Float64()
+	if u <= 0 {
+		u = 1e-9
+	}
+	return time.Duration(-math.Log(u) * float64(mean))
 }
 
 func loadMessages(path string) ([]json.RawMessage, error) {

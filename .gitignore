@@ -1,0 +1,11 @@
+/metrics/
+*.csv
+/bin/
+/logs/
+/consumer
+/producer
+/apisim
+/orchestrator
+
+# Evidências dos pilotos (dados brutos versionados de propósito)
+!/pilots/**/*.csv

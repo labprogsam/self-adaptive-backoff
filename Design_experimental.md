@@ -100,8 +100,8 @@ variável de resposta central para comparar as estratégias do Fator A.
 - Tamanho/complexidade do payload JSON.
 - Taxa de produção de mensagens (msgs/s) e seu padrão (constante vs. rajada de chegada).
 - Taxa de erro induzida na API simulada (probabilidade de falha por requisição).
-- Padrão temporal de falha da API simulada (aleatório uniforme, rajada/burst,
-  indisponibilidade total por janela de tempo).
+- Padrão temporal de falha da API simulada (aleatório uniforme, indisponibilidade total
+  por janela de tempo).
 - Tempo de processamento de resposta da API (distribuição, ex.: constante, normal, longa).
 
 ---
@@ -114,16 +114,30 @@ de controle para reduzir a dimensionalidade do experimento. Os fatores seleciona
 | Fator | Descrição | Níveis propostos |
 |-------|-----------|-------------------|
 | **A — Estratégia de backoff** | Algoritmo de retry | (1) sem backoff / retry imediato [controle], (2) backoff fixo, (3) backoff exponencial sem jitter, (4) backoff exponencial com jitter, (5) AIMD (Δ+, ×decremento), (6) algoritmo do HPA (delay_novo = delay_atual × taxa_observada/setpoint) |
-| **B — Taxa de erro da API** | Probabilidade de falha por requisição no simulador | 10%, 30%, 50% |
-| **C — Padrão temporal de falha** | Regime de erro da API simulada | aleatório uniforme, em rajada, indisponibilidade total temporária | 
-
-| **D — Carga de mensagens** | Taxa de produção do producer | baixa, média, alta (valores calibrados na Seção 7) |
+| **B — Taxa de erro da API** | Probabilidade de falha de cada requisição enquanto a API simulada está em operação — durante todo o tempo no padrão uniforme, e apenas na janela saudável no padrão de indisponibilidade (na janela de indisponibilidade a falha é sempre 100%) | 10%, 30%, 50% |
+| **C — Padrão temporal de falha** | Regime de erro da API simulada (como essas falhas se distribuem no tempo) | aleatório uniforme, indisponibilidade total temporária |
+| **D — Carga de mensagens** | Taxa de produção do producer | baixa, média, alta (Seção 7) — variado **só na triagem** |
 | **E — Número máximo de tentativas** | Numero máximo de tentativas até o descarte | 3, 5, 10 |
 
 Justificativa da seleção: os fatores A, B e C são os que mais diretamente respondem às
-perguntas de pesquisa. O fator D avalia se a vantagem de uma estratégia se mantém sob
-pressão de carga. O fator E é incluído numa etapa de triagem porque estratégias
-adaptativas podem depender de forma diferente do número de tentativas disponíveis.
+perguntas de pesquisa. O fator D é variado apenas na etapa de triagem, para checar se a
+taxa de produção tem efeito relevante sobre as métricas; no experimento principal, a taxa
+é fixada em um único valor, igual em todas as rodadas, escolhido a partir do resultado da
+triagem (Seção 8) — não é um fator comparativo do estudo principal, para que a taxa de
+chegada de mensagens não seja uma fonte adicional de variação entre as execuções que se
+comparam. O fator E é incluído na mesma etapa de triagem porque estratégias adaptativas
+podem depender de forma diferente do número de tentativas disponíveis; também é fixado no
+experimento principal.
+
+**Nota sobre os níveis do Fator C:** o fator compara falhas independentes no tempo
+(uniforme) com falhas concentradas no tempo (indisponibilidade total por uma janela) — é
+essa diferença que determina se esperar antes de reprocessar aumenta a chance de sucesso.
+No padrão de indisponibilidade, B é a taxa de erro da janela saudável; a taxa média efetiva é,
+portanto, maior que B (ex.: B=50% com janelas de 10s/10s resulta em ~75%).
+
+```
+taxa média = (janela_saudável × B + janela_indisponível × 100%) / (janela_saudável + janela_indisponível)
+```
 
 **Nota sobre os níveis 5 e 6 do Fator A:** ambos exigem um sinal de realimentação — a taxa
 de erro observada numa janela observável de mensagens (ex.: últimas N tentativas) —
@@ -146,14 +160,15 @@ falhas injetadas artificialmente, pois permite reprodutibilidade e controle expe
 ## 7. Seleção da carga de trabalho
 
 - **Carga:** gerada por um produtor, em 3 níveis (baixa/média/alta, ex.:5/20/50 msgs/s,
-  calibrados para a carga "alta" aproximar o consumidor da saturação).
-  Payload JSON de 1KB a 3KB, fixo entre execuções. Volume fixo por *run* (ex.: 3.000
-  mensagens), suficiente para observar rajadas de falha completas.
+  calibrados para a carga "alta" aproximar o consumidor da saturação) — usados **só na
+  triagem**, para avaliar o efeito do Fator D antes de fixá-lo. No experimento principal,
+  usa-se um único valor de taxa, igual em todas as rodadas (ver Seção 8).
+  Payload JSON pequeno (~100 bytes), fixo entre execuções. Volume fixo por *run* (ex.: 3.000
+  mensagens), suficiente para observar janelas de indisponibilidade completas.
 - **Simulador de API de terceiro:** serviço HTTP que decide, por configuração, se cada
   requisição responde `2xx` (latência configurável) ou falha, segundo o padrão do Fator C —
-  aleatório uniforme (falha com probabilidade *p*), rajada (alterna janelas
-  saudável/degradada) ou indisponibilidade total (100% de falha por uma janela, depois
-  normal — testa teto de delay e tempo de recuperação).
+  aleatório uniforme (falha com probabilidade *p*) ou indisponibilidade total (100% de
+  falha por uma janela, depois normal — testa teto de delay e tempo de recuperação).
 - **Calibração:** rodada piloto para garantir que `MaxDelay` seja de fato alcançado dentro
   do número de tentativas testado, que a carga "alta" gere pressão real na fila sem
   estourar o broker, e que os parâmetros do AIMD (Δ+, ×decremento) e do algoritmo do HPA
@@ -168,9 +183,10 @@ falhas injetadas artificialmente, pois permite reprodutibilidade e controle expe
 
 - **Duas fases:** (1) triagem — fatorial fracionado cobrindo os fatores A–E, com
   poucas repetições, para descartar fatores/interações sem efeito significativo; (2)
-  principal — fatorial completo **A × B × C** (6 estratégias × 3 taxas de erro × 3 padrões
-  = 54 combinações), com D fixado em dois níveis (baixa/alta carga, analisados
-  separadamente) e E fixado no valor indicado pela triagem.
+  principal — fatorial completo **A × B × C** (6 estratégias × 3 taxas de erro × 2 padrões
+  = 36 combinações), com **D fixado em um único valor de taxa de produção, igual em
+  todas as execuções** (escolhido a partir do resultado da triagem, não comparado entre
+  níveis no experimento principal) e E fixado no valor indicado pela triagem.
 - **Repetições:** n = 30 execuções independentes por combinação. Ordem aleatorizada entre
   combinações, para não confundir efeito de fator com efeito de tempo/ambiente. Cada
   execução parte de uma instância nova do simulador de API e do consumidor.
@@ -199,7 +215,7 @@ falhas injetadas artificialmente, pois permite reprodutibilidade e controle expe
 - **Análise de trade-off:** gráficos de dispersão tempo de espera induzido pelo backoff ×
   sobrecarga de chamadas por estratégia, para visualizar a fronteira de Pareto entre
   "recuperar rápido" e "não sobrecarregar a API de terceiro".
-- **Análise de séries temporais** (janelas de rajada/indisponibilidade): comparação visual
+- **Análise de séries temporais** (janelas de indisponibilidade): comparação visual
   da recuperação da taxa de sucesso entre estratégias.
 
 ---

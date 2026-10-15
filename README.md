@@ -1,10 +1,16 @@
 # self-adaptive-backoff
 
 Serviço em Go que consome mensagens JSON de uma fila do RabbitMQ, repassa cada
-mensagem via `POST` para uma API local (porta `9091`) e imprime o resultado
-retornado. Em caso de erro (JSON inválido, falha de comunicação, timeout ou
-resposta de erro da API), o serviço tenta novamente usando **backoff
-exponencial** antes de desistir da mensagem.
+mensagem via `POST` para uma API de terceiro e imprime o resultado retornado.
+Em caso de erro (JSON inválido, falha de comunicação, timeout ou resposta de
+erro da API), o serviço tenta novamente segundo uma **estratégia de backoff
+configurável** antes de desistir da mensagem.
+
+Este repositório é a base de código de um TCC sobre análise comparativa de
+estratégias de backoff em arquiteturas orientadas a eventos — o roteiro
+experimental completo (objetivos, métricas, fatores, design dos experimentos)
+está em [`Design_experimental.md`](Design_experimental.md), seguindo a
+metodologia de Raj Jain.
 
 ## Arquitetura
 
@@ -12,75 +18,121 @@ exponencial** antes de desistir da mensagem.
 
 https://excalidraw.com/#json=VpGgq4FiHOlLCOuhQ3M6t,BSBUnwGBCuWeysPIMm8DvQ
 
-- **Producer** — lê `tasks.json` e publica cada mensagem na fila do RabbitMQ.
-- **Broker (RabbitMQ)** — fila `tasks` que desacopla producer e consumer.
-- **Consumer** — consome uma mensagem por vez (`Qos(1)`), delega o envio ao `apiclient` e decide `ack`/`nack` conforme o resultado.
-- **backoff** (`internal/backoff`) — componente isolado e genérico responsável pelas tentativas de reenvio; é o ponto principal onde serão exploradas variações da estratégia (exponencial atual, jitter, tetos, número de tentativas etc.).
-- **API externa** — serviço HTTP (`API_URL`) que efetivamente processa a tarefa; a comunicação com ela é o gatilho para acionar o backoff em caso de falha.
-
-## Como funciona
-
-1. Conecta ao RabbitMQ e consome mensagens da fila (uma por vez, via `Qos(1)`).
-2. Para cada mensagem:
-   - Valida se o corpo é um JSON válido (`unmarshal`).
-   - Faz um `POST` síncrono para a API (`API_URL`), aguardando a resposta.
-   - Em caso de sucesso (`2xx`), imprime o resultado em tela e confirma o
-     processamento da mensagem (`ack`).
-3. Se qualquer etapa falhar, a mensagem é reprocessada com backoff
-   exponencial: espera inicial de 500ms, dobrando a cada tentativa (com
-   jitter e teto de 30s), até 3 tentativas extras. Se todas falharem, a
-   mensagem é descartada (`nack` sem requeue) para não travar a fila com uma
-   mensagem "envenenada".
-4. Se a conexão com o RabbitMQ cair, o serviço reconecta automaticamente.
-
-Há também um producer, que lê um arquivo JSON na raiz do projeto
-(`tasks.json` por padrão) contendo uma lista de mensagens e publica cada uma
-delas na fila — útil para popular a fila e testar o consumidor. Sem
-dependências além do cliente oficial do RabbitMQ
-(`github.com/rabbitmq/amqp091-go`).
+- **Producer** — publica na fila do RabbitMQ as mensagens de `tasks.json`
+  (3000 pedidos de ~100 bytes, fixos entre execuções), numa taxa configurável
+  (Seção 7.1 do design experimental).
+- **Broker (RabbitMQ)** — fila que desacopla producer e consumer.
+- **Consumer** — consome uma mensagem por vez (`Qos(1)`), delega o envio ao
+  `apiclient` + `backoff`, grava um registro por tentativa em CSV e decide
+  `ack`/`nack` conforme o resultado.
+- **backoff** (`internal/backoff`) — as seis estratégias comparadas no TCC
+  (Fator A), cada uma em seu próprio arquivo, selecionáveis em runtime.
+- **apisim** (`cmd/apisim`) — simulador de API de terceiro: injeta taxa de
+  erro (Fator B) e padrão temporal de falha (Fator C) configuráveis, no lugar
+  de uma API real — necessário para rodar os experimentos de forma
+  controlada e reprodutível (Seção 7.2 do design experimental).
+- **orchestrator** (`cmd/orchestrator`) — roda um plano de experimento (várias
+  combinações de fatores × repetições) automaticamente: cada rodada é uma
+  execução isolada e sequencial de apisim+consumer+producer (fila, porta e
+  arquivo de métricas próprios), rodando em paralelo com as demais rodadas
+  até um limite configurável — a concorrência fica **entre** rodadas, nunca
+  dentro de uma rodada (que continua sequencial, preservando `Qos(1)` e o
+  estado entre mensagens do AIMD/HPA).
 
 ## Estrutura do projeto
 
 ```
 cmd/
-  consumer/main.go   # entrypoint do consumidor
-  producer/main.go   # entrypoint do producer
+  consumer/main.go     # entrypoint do consumidor
+  producer/main.go     # entrypoint do producer
+  apisim/main.go       # entrypoint do simulador de API de terceiro
+  orchestrator/main.go # entrypoint do orquestrador de experimentos
 internal/
-  config/    # leitura de configuração (env vars)
-  backoff/   # retry com backoff exponencial (genérico, reutilizável)
-  apiclient/ # chamada HTTP POST à API local
-  consumer/  # loop de consumo do RabbitMQ
-  producer/  # leitura do arquivo de tasks e publicação na fila
-tasks.json   # exemplo de lista de mensagens para o producer
+  config/       # leitura de configuração (env vars) do consumer/producer
+  backoff/      # as 6 estratégias do Fator A, uma por arquivo, + laço de retry genérico
+  apiclient/    # cliente HTTP: valida JSON, faz o POST, classifica o tipo de erro
+  consumer/     # loop de consumo do RabbitMQ + gravação de métricas por tentativa
+  producer/     # leitura de tasks.json e publicação na fila, com controle de taxa
+  apisim/       # lógica do simulador de API (injeção de falha e latência)
+  metrics/      # writer CSV do schema "por tentativa" (Design_experimental.md, Seção 8)
+  orchestrator/ # execução paralela de rodadas isoladas a partir de um plano (JSON)
+experiments/
+  example_plan.json # plano de exemplo (template, não é a triagem/design final)
+  gen_tasks.py      # gera tasks.json (semente fixa: sempre o mesmo conteúdo)
+  prefix_analysis.py # análise por prefixo: quantas mensagens por execução bastam
+pilots/      # pilotos de calibração: plano, carga, dados brutos e relatório de cada um
+tasks.json   # carga de trabalho do producer: 3000 mensagens de ~100 bytes (Seção 7.1)
 ```
 
-- `internal/config` — carrega `AMQP_URL`, `QUEUE_NAME`, `API_URL`, `TASKS_FILE`
-  e os parâmetros de backoff a partir de variáveis de ambiente.
-- `internal/backoff` — implementação genérica (via generics) de retry com
-  backoff exponencial e jitter, sem depender de RabbitMQ ou HTTP.
-- `internal/apiclient` — cliente HTTP responsável por validar o JSON e fazer
-  o `POST` síncrono para a API.
-- `internal/consumer` — conecta ao RabbitMQ, consome a fila, reconecta em
-  caso de queda, e usa `apiclient` + `backoff` para processar cada mensagem.
-- `internal/producer` — lê o arquivo de tasks e publica cada item na fila.
-- `cmd/consumer` e `cmd/producer` — binários finos que apenas carregam a
+- `internal/backoff` — `strategy.go` define a interface `Strategy` e a
+  fábrica `New(name, Params)`; cada estratégia (`none.go`, `fixed.go`,
+  `exponential.go`, `exponential_jitter.go`, `aimd.go`, `hpa.go`) implementa
+  essa interface; `backoff.go` tem o laço genérico `Backoff[T]`, agnóstico de
+  transporte (não depende de HTTP nem AMQP).
+- `internal/apiclient` — classifica cada erro em `sucesso | erro_dado |
+  timeout | erro_comunicacao` (função `Classify`), usado para o schema de
+  saída por tentativa.
+- `internal/metrics` — grava um CSV (`METRICS_FILE`) com um registro por
+  tentativa: `run_id`, `message_id`, número da tentativa, timestamp,
+  duração, tempo de espera e resultado — a fonte de dados para as métricas
+  da Seção 3 do design experimental.
+- `cmd/consumer`, `cmd/producer`, `cmd/apisim` — binários finos que carregam
   configuração e chamam o pacote correspondente.
 
 ## Pré-requisitos
 
 - Go 1.22+
 - Um RabbitMQ acessível (local ou via Docker)
-- Uma API rodando em `http://localhost:9091` que aceite `POST` com um corpo
-  JSON e responda com status `2xx` em caso de sucesso
 
 ## Configuração (variáveis de ambiente)
 
-| Variável     | Descrição                          | Padrão                                 |
-|--------------|-------------------------------------|-----------------------------------------|
-| `AMQP_URL`   | URL de conexão do RabbitMQ          | `amqp://guest:guest@localhost:5672/`    |
-| `QUEUE_NAME` | Nome da fila a ser consumida        | `tasks`                                 |
-| `API_URL`    | Endpoint da API chamada via `POST`  | `http://localhost:9091/process`         |
-| `TASKS_FILE` | Arquivo JSON lido pelo producer      | `tasks.json`                           |
+### Consumer / Producer (`internal/config`)
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `AMQP_URL` | URL de conexão do RabbitMQ | `amqp://guest:guest@localhost:5672/` |
+| `QUEUE_NAME` | Nome da fila | `tasks` |
+| `API_URL` | Endpoint chamado via `POST` | `http://localhost:9091/process` |
+| `HTTP_TIMEOUT` | Timeout do cliente HTTP | `30s` |
+| `TASKS_FILE` | Arquivo de mensagens lido pelo producer | `tasks.json` |
+| `RUN_ID` | Identifica a execução no CSV de métricas | timestamp atual |
+| `METRICS_FILE` | Caminho do CSV de métricas por tentativa | `metrics/attempts.csv` |
+
+**Fator A — estratégia de backoff:**
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `BACKOFF_STRATEGY` | `none` \| `fixed` \| `exponential` \| `exponential_jitter` \| `aimd` \| `hpa` | `exponential_jitter` |
+| `BASE_BACKOFF` | Delay base (estratégias estáticas) / delay inicial (AIMD, HPA) | `500ms` |
+| `MAX_BACKOFF` | Teto de delay | `30s` |
+| `MIN_BACKOFF` | Piso de delay (AIMD, HPA) | `50ms` |
+| `MAX_RETRIES` | Fator E — nº máximo de tentativas extras antes do descarte | `3` |
+| `AIMD_INCREMENT` | Δ+ somado ao delay a cada falha (nível 5) | `100ms` |
+| `AIMD_DECREASE_FACTOR` | Multiplicador aplicado ao delay a cada sucesso (nível 5) | `0.5` |
+| `HPA_SETPOINT` | Taxa de erro-alvo (nível 6) | `0.05` |
+| `HPA_WINDOW_SIZE` | Tamanho da janela observável (nível 6) | `20` |
+
+**Carga de trabalho do producer (Seção 7.1):**
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `PRODUCER_RATE` | Taxa de publicação, em mensagens/segundo | `20` |
+| `PRODUCER_POISSON` | `true`: intervalos entre publicações com distribuição Poisson; `false`: intervalo fixo | `true` |
+
+### apisim (`internal/apisim`, variáveis próprias — serviço independente)
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `APISIM_ADDR` | Endereço de escuta | `:9091` |
+| `APISIM_ERROR_RATE` | Fator B — taxa de erro de base (0 a 1) | `0.1` |
+| `APISIM_PATTERN` | Fator C — `uniform` \| `outage` | `uniform` |
+| `APISIM_HEALTHY_WINDOW` | Duração da janela saudável, com taxa `APISIM_ERROR_RATE` (`outage`) | `10s` |
+| `APISIM_OUTAGE_WINDOW` | Duração da janela de indisponibilidade, com 100% de falha (`outage`) | `10s` |
+| `APISIM_LATENCY_MEAN` | Latência simulada de resposta em caso de sucesso | `50ms` |
+| `APISIM_LATENCY_JITTER` | Variação aleatória (uniforme) somada à latência | `20ms` |
+| `APISIM_TIMEOUT_SHARE` | Fração das falhas que viram resposta lenta (simula timeout no cliente) | `0` |
+| `APISIM_TIMEOUT_DELAY` | Duração da resposta lenta | `5s` |
+| `APISIM_RESET_SHARE` | Fração das falhas que viram reset abrupto de conexão (simula erro de comunicação) | `0` |
 
 ## Como executar
 
@@ -93,61 +145,122 @@ docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 A interface de gerenciamento fica disponível em `http://localhost:15672`
 (usuário/senha padrão: `guest`/`guest`).
 
-### 2. Garanta que sua API esteja no ar na porta 9091
+### 2. Suba o simulador de API (ou aponte `API_URL` para uma API real)
 
-O serviço espera que `API_URL` aceite `POST` com o JSON da mensagem e
-responda `2xx` com o resultado do processamento.
+```bash
+go run ./cmd/apisim
+```
 
-### 3. Baixe as dependências e rode o consumidor
+### 3. Rode o consumidor, escolhendo a estratégia de backoff
 
 ```bash
 go mod tidy
-go run ./cmd/consumer
+BACKOFF_STRATEGY=exponential_jitter go run ./cmd/consumer
 ```
 
-Ou compile e execute o binário:
+### 4. Publique mensagens de teste com o producer
+
+O producer publica as 3000 mensagens de `tasks.json`, a `PRODUCER_RATE`
+msgs/s:
 
 ```bash
-go build -o consumer ./cmd/consumer
-./consumer
+PRODUCER_RATE=20 go run ./cmd/producer
 ```
 
-Para customizar fila/API/conexão:
+### 5. Confira as métricas coletadas
+
+Cada tentativa de processamento vira uma linha em `METRICS_FILE` (padrão
+`metrics/attempts.csv`), com o schema descrito na Seção 8 do design
+experimental.
+
+## Exemplo: rodando uma combinação de fatores (triagem)
 
 ```bash
-AMQP_URL="amqp://user:pass@meu-host:5672/" \
-QUEUE_NAME="minha-fila" \
-API_URL="http://localhost:9091/process" \
-go run ./cmd/consumer
+# Terminal 1 — API simulada com 30% de erro e indisponibilidade de 10s a cada 20s
+APISIM_PATTERN=outage APISIM_ERROR_RATE=0.3 \
+APISIM_HEALTHY_WINDOW=10s APISIM_OUTAGE_WINDOW=10s \
+  go run ./cmd/apisim
+
+# Terminal 2 — consumidor com AIMD
+RUN_ID=screening_aimd_b30_outage \
+BACKOFF_STRATEGY=aimd MAX_RETRIES=5 \
+METRICS_FILE=metrics/screening_aimd_b30_outage.csv \
+  go run ./cmd/consumer
+
+# Terminal 3 — carga de tasks.json (3000 mensagens de ~100 bytes) a 20 msgs/s
+RUN_ID=screening_aimd_b30_outage PRODUCER_RATE=20 go run ./cmd/producer
 ```
 
-### 4. Publique mensagens de teste na fila com o producer
+Repita trocando `BACKOFF_STRATEGY`/`APISIM_*`/`RUN_ID` para cobrir as demais
+combinações dos Fatores A, B e C (Seção 8 do design experimental) — ou use o
+orquestrador (próxima seção) para automatizar isso.
+
+## Orquestrador: rodando várias combinações em paralelo
+
+Rodar as 36 combinações × 30 repetições (Seção 8) uma de cada vez, manualmente,
+é inviável em tempo. O orquestrador roda um **plano** (arquivo JSON: rodadas ×
+repetições) automaticamente, com paralelismo limitado **entre rodadas** — cada
+rodada continua sequencial por dentro (preserva `Qos(1)` e o estado
+compartilhado do AIMD/HPA; ver a discussão sobre concorrência registrada nesta
+conversa/commits). Cada rodada roda isolada: porta de `apisim`, fila do
+RabbitMQ e arquivo de métricas próprios, alocados automaticamente.
 
 ```bash
-go run ./cmd/producer
+go run ./cmd/orchestrator \
+  -plan experiments/example_plan.json \
+  -parallel 4 \
+  -drain-timeout 20m
 ```
 
-Por padrão ele lê `tasks.json` na raiz do projeto, que deve conter uma lista
-(array) de objetos JSON, por exemplo:
+`experiments/example_plan.json` é só um **exemplo/template** (3 rodadas × 2
+repetições, 3000 mensagens cada) para validar o mecanismo — não é o
+plano de triagem nem o do experimento principal, que ainda dependem dos
+valores de calibração da Seção 7.3 e da escolha do desenho fatorial
+fracionado da triagem (Seção 8). Monte o plano real editando esse arquivo:
+`shared_env` vale para todas as rodadas (é onde entra a taxa de produção
+única — `PRODUCER_RATE` — decidida após a triagem, ver Seção 5); cada entrada
+de `rounds` é uma combinação de fatores, com overrides em `consumer_env`
+(Fator A e seus parâmetros, Fator E) e `apisim_env` (Fatores B e C).
 
-```json
-[
-  { "order_id": 1, "action": "process" },
-  { "order_id": 2, "action": "process", "priority": "high" },
-  { "order_id": 3, "action": "cancel" }
-]
-```
+O orquestrador conta as mensagens do arquivo de tarefas (`TASKS_FILE`, padrão
+`tasks.json`) para saber quando uma rodada terminou de processar, sem depender
+da API de management do RabbitMQ (ele conta, no CSV de métricas da própria
+rodada, quantas mensagens distintas já têm um resultado final registrado).
 
-Cada objeto da lista é publicado como uma mensagem separada na fila
-(`QUEUE_NAME`). Para usar outro arquivo:
+Saída: um CSV de métricas por execução, agrupado por rodada
+(`metrics/<round_name>/<run_id>.csv`, schema da
+Seção 8) e um resumo (`metrics/runs_summary.csv`) com status/duração de cada
+execução. A saída dos processos filhos é descartada por padrão; para depurar,
+passe `-log-dir logs` e cada processo grava em
+`logs/<run_id>_{consumer,apisim,producer}.log`.
+
+## Análise por prefixo: quantas mensagens por execução?
+
+Para escolher o volume de mensagens por execução no piloto (Seção 7.3), rode
+algumas combinações com o `tasks.json` completo e recalcule as métricas da
+Seção 3 usando só as primeiras N mensagens de cada execução:
 
 ```bash
-TASKS_FILE=outra-lista.json go run ./cmd/producer
+python3 experiments/prefix_analysis.py metrics --prefixes 250,500,1000,1500,2000,3000 --tol 0.02
 ```
 
-Com o consumidor rodando (passo 3), ele deve logar o recebimento de cada
-mensagem, chamar a API e imprimir o resultado retornado no terminal.
+Para cada rodada, o script mostra média ± IC95% (entre execuções) de cada
+métrica por N, e indica a partir de qual N as médias ficam dentro do IC95% da
+referência (o maior N), ou a até `--tol` dela. `--out arquivo.csv` grava todos
+os números. Funciona porque as mensagens são publicadas e processadas sempre
+na mesma ordem: as N primeiras de uma execução longa equivalem a uma execução
+de N mensagens. Só usa a biblioteca padrão do Python.
 
-Alternativamente, dá para publicar manualmente pela interface de
-gerenciamento do RabbitMQ (`http://localhost:15672`), publicando um único
-JSON (não uma lista) diretamente na fila `tasks`.
+## Testes
+
+```bash
+go test ./...
+```
+
+Cobrem o estado do AIMD e do algoritmo do HPA (incremento/decremento,
+cálculo sobre a janela observável, piso e teto), o controle de taxa do
+producer (intervalo fixo e distribuição Poisson) e a
+expansão de plano/detecção de rodada drenada do orquestrador. Não cobrem o
+disparo real de processos (`internal/orchestrator` roda `exec.Command`) —
+isso foi validado manualmente de ponta a ponta (RabbitMQ real + plano de
+exemplo), não por teste automatizado.

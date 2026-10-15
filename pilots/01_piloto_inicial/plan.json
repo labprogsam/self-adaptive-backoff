@@ -1,0 +1,43 @@
+{
+  "repetitions": 10,
+  "shared_env": {
+    "AMQP_URL": "amqp://guest:guest@localhost:5672/",
+    "MAX_RETRIES": "3",
+    "BASE_BACKOFF": "500ms",
+    "MAX_BACKOFF": "30s",
+    "PRODUCER_RATE": "20",
+    "PRODUCER_POISSON": "true"
+  },
+  "rounds": [
+    {
+      "name": "exponential_b50_outage",
+      "consumer_env": { "BACKOFF_STRATEGY": "exponential" },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "10s",
+        "APISIM_OUTAGE_WINDOW": "10s"
+      }
+    },
+    {
+      "name": "exponential_b50_uniform",
+      "consumer_env": { "BACKOFF_STRATEGY": "exponential" },
+      "apisim_env": { "APISIM_ERROR_RATE": "0.5", "APISIM_PATTERN": "uniform" }
+    },
+    {
+      "name": "none_b50_outage",
+      "consumer_env": { "BACKOFF_STRATEGY": "none" },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "10s",
+        "APISIM_OUTAGE_WINDOW": "10s"
+      }
+    },
+    {
+      "name": "none_b50_uniform",
+      "consumer_env": { "BACKOFF_STRATEGY": "none" },
+      "apisim_env": { "APISIM_ERROR_RATE": "0.5", "APISIM_PATTERN": "uniform" }
+    }
+  ]
+}
