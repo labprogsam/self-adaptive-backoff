@@ -66,3 +66,44 @@ func TestExpand_GeneratesOneExecutionPerRoundAndRepetition(t *testing.T) {
 		t.Fatalf("esperado run_id \"a_rep01\", obtido %q", execs[0].RunID)
 	}
 }
+
+func TestShuffle_SameSeedSameOrderAndKeepsAllExecutions(t *testing.T) {
+	plan := Plan{Repetitions: 5, Rounds: []Round{{Name: "a"}, {Name: "b"}, {Name: "c"}}}
+
+	first := Expand(plan)
+	second := Expand(plan)
+	Shuffle(first, 42)
+	Shuffle(second, 42)
+
+	original := Expand(plan)
+	changed := false
+	seen := map[string]bool{}
+	for i := range first {
+		if first[i].RunID != second[i].RunID {
+			t.Fatalf("mesma semente gerou ordens diferentes na posição %d: %s vs %s", i, first[i].RunID, second[i].RunID)
+		}
+		if first[i].RunID != original[i].RunID {
+			changed = true
+		}
+		seen[first[i].RunID] = true
+	}
+	if !changed {
+		t.Fatal("ordem embaralhada idêntica à original")
+	}
+	if len(seen) != len(original) {
+		t.Fatalf("esperado %d execuções distintas após embaralhar, obtido %d", len(original), len(seen))
+	}
+
+	third := Expand(plan)
+	Shuffle(third, 7)
+	same := true
+	for i := range first {
+		if first[i].RunID != third[i].RunID {
+			same = false
+			break
+		}
+	}
+	if same {
+		t.Fatal("sementes diferentes geraram a mesma ordem")
+	}
+}

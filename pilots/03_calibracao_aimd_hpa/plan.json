@@ -1,0 +1,1015 @@
+{
+  "repetitions": 3,
+  "shared_env": {
+    "AMQP_URL": "amqp://guest:guest@localhost:5672/",
+    "BASE_BACKOFF": "100ms",
+    "MAX_BACKOFF": "1600ms",
+    "MIN_BACKOFF": "10ms",
+    "HTTP_TIMEOUT": "6s",
+    "APISIM_LATENCY_MEAN": "10ms",
+    "APISIM_LATENCY_JITTER": "4ms",
+    "APISIM_HEALTHY_WINDOW": "2s",
+    "APISIM_OUTAGE_WINDOW": "2s",
+    "MAX_RETRIES": "5",
+    "PRODUCER_RATE": "2.5",
+    "PRODUCER_POISSON": "true"
+  },
+  "rounds": [
+    {
+      "name": "hpa_sp10_w10_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w10_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w10_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w10_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w10_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w10_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w20_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w20_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w20_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w20_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w20_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w20_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w50_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w50_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w50_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w50_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp10_w50_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp10_w50_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.1",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w10_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w10_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w10_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w10_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w10_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w10_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w20_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w20_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w20_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w20_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w20_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w20_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w50_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w50_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w50_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w50_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp30_w50_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp30_w50_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.3",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w10_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w10_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w10_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w10_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w10_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w10_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "10"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w20_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w20_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w20_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w20_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w20_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w20_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "20"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w50_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w50_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w50_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w50_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "hpa_sp50_w50_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "hpa_sp50_w50_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa",
+        "HPA_SETPOINT": "0.5",
+        "HPA_WINDOW_SIZE": "50"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc20_f5_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc20_f5_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc20_f5_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc20_f5_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc20_f5_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc20_f5_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc20_f8_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc20_f8_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc20_f8_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc20_f8_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc20_f8_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc20_f8_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "20ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc100_f5_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc100_f5_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc100_f5_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc100_f5_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc100_f5_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc100_f5_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.5"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc100_f8_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc100_f8_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc100_f8_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc100_f8_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "aimd_inc100_f8_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_inc100_f8_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd",
+        "AIMD_INCREMENT": "100ms",
+        "AIMD_DECREASE_FACTOR": "0.8"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "exponential_ref_b10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "exponential_ref_b10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.1",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "exponential_ref_b30_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "exponential_ref_b30_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.3",
+        "APISIM_PATTERN": "outage"
+      }
+    },
+    {
+      "name": "exponential_ref_b50_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "exponential_ref_b50_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_ERROR_RATE": "0.5",
+        "APISIM_PATTERN": "outage"
+      }
+    }
+  ]
+}

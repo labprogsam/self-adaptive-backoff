@@ -8,6 +8,8 @@ e o relatório com resultados e decisões.
 | Piloto | Data | Pergunta | Principal conclusão |
 |---|---|---|---|
 | [01 — piloto inicial](01_piloto_inicial/README.md) | 2026-10-14 | Quantas mensagens por execução bastam? Os valores de referência são adequados? | 1000 mensagens por execução bastam; `MAX_BACKOFF` e Fator D precisam de revisão |
+| [02 — escala e capacidade](02_escala_e_capacidade/README.md) | 2026-10-15 | Encolher as constantes de tempo preserva os resultados? Qual a vazão de cada estratégia? | A escala 1/5 preserva a dinâmica; HPA com setpoint de 5% fica no teto e precisa ser calibrado |
+| [03 — calibração do AIMD e do HPA](03_calibracao_aimd_hpa/README.md) | 2026-10-15 | Quais parâmetros do AIMD e do HPA produzem delays comparáveis aos das demais estratégias? | AIMD Δ=100ms, f=0,5; HPA setpoint 50%, janela 50; experimento principal estimado em ~7,7h |
 
 ## Estrutura de cada piloto
 

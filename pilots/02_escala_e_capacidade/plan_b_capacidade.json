@@ -1,0 +1,139 @@
+{
+  "repetitions": 3,
+  "shared_env": {
+    "AMQP_URL": "amqp://guest:guest@localhost:5672/",
+    "MAX_RETRIES": "10",
+    "BASE_BACKOFF": "100ms",
+    "MAX_BACKOFF": "1600ms",
+    "MIN_BACKOFF": "10ms",
+    "AIMD_INCREMENT": "20ms",
+    "HTTP_TIMEOUT": "6s",
+    "PRODUCER_RATE": "100",
+    "PRODUCER_POISSON": "true",
+    "APISIM_LATENCY_MEAN": "10ms",
+    "APISIM_LATENCY_JITTER": "4ms",
+    "APISIM_ERROR_RATE": "0.5"
+  },
+  "rounds": [
+    {
+      "name": "hpa_b50_e10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "2s",
+        "APISIM_OUTAGE_WINDOW": "2s"
+      }
+    },
+    {
+      "name": "hpa_b50_e10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "hpa"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "aimd_b50_e10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "2s",
+        "APISIM_OUTAGE_WINDOW": "2s"
+      }
+    },
+    {
+      "name": "aimd_b50_e10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "aimd"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "exponential_b50_e10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "2s",
+        "APISIM_OUTAGE_WINDOW": "2s"
+      }
+    },
+    {
+      "name": "exponential_b50_e10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "exponential_jitter_b50_e10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential_jitter"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "2s",
+        "APISIM_OUTAGE_WINDOW": "2s"
+      }
+    },
+    {
+      "name": "exponential_jitter_b50_e10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "exponential_jitter"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "fixed_b50_e10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "fixed"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "2s",
+        "APISIM_OUTAGE_WINDOW": "2s"
+      }
+    },
+    {
+      "name": "fixed_b50_e10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "fixed"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "uniform"
+      }
+    },
+    {
+      "name": "none_b50_e10_outage",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "none"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "outage",
+        "APISIM_HEALTHY_WINDOW": "2s",
+        "APISIM_OUTAGE_WINDOW": "2s"
+      }
+    },
+    {
+      "name": "none_b50_e10_uniform",
+      "consumer_env": {
+        "BACKOFF_STRATEGY": "none"
+      },
+      "apisim_env": {
+        "APISIM_PATTERN": "uniform"
+      }
+    }
+  ]
+}

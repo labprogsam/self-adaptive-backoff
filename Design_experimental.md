@@ -66,22 +66,24 @@ variável de resposta central para comparar as estratégias do Fator A.
 
 ### 4.1 Parâmetros do sistema
 - Estratégia de backoff.
-- Delay base — hoje `500ms`.
-- Delay máximo/teto — hoje `30s`.
+- Delay base — hoje `100ms`.
+- Delay máximo/teto — hoje `1,6s`.
 - Número máximo de tentativas extras — hoje `3`.
 - Fator/amplitude de jitter — hoje `20%` do delay calculado.
-- Timeout HTTP do cliente http — hoje `30s`.
+- Timeout HTTP do cliente http — hoje `6s`.
 - `Qos` do consumidor RabbitMQ (prefetch) — hoje `1`.
 - Política de requeue em falha definitiva — hoje `nack` sem requeue.
 - Controladores (self-adaptive-backoffs).
 - **Parâmetros específicos do AIMD (Fator A, nível 5):** incremento aditivo por falha
-  (Δ+, ex. `+100ms`), fator de decremento multiplicativo por sucesso (ex. `×0.5`), delay
-  mínimo/máximo do estado adaptativo.
+  (Δ+, hoje `+100ms`), fator de decremento multiplicativo por sucesso (hoje `×0.5`), delay
+  mínimo/máximo do estado adaptativo (hoje `10ms` / `1,6s`).
 - **Parâmetros específicos do algoritmo do HPA:** taxa de erro-alvo (*setpoint*), tamanho da
   janela observável usada para estimar a taxa de erro observada (variável de processo). Fórmula
   usada tal qual o Kubernetes a define, sem ganho adicional (`delay_novo = delay_atual ×
   taxa_observada/setpoint`) — decisão tomada com o orientador para manter fidelidade ao
   algoritmo original em vez de generalizá-lo com um termo de controle Proporcional externo.
+  Hoje: *setpoint* `50%`, janela observável de `50` tentativas, delay mínimo/máximo
+  `10ms` / `1,6s`.
 - Número de instâncias do consumidor — hoje `1`.
 
 - Hardware/contêineres usados para RabbitMQ, consumidor e simulador de API.
@@ -116,18 +118,36 @@ de controle para reduzir a dimensionalidade do experimento. Os fatores seleciona
 | **A — Estratégia de backoff** | Algoritmo de retry | (1) sem backoff / retry imediato [controle], (2) backoff fixo, (3) backoff exponencial sem jitter, (4) backoff exponencial com jitter, (5) AIMD (Δ+, ×decremento), (6) algoritmo do HPA (delay_novo = delay_atual × taxa_observada/setpoint) |
 | **B — Taxa de erro da API** | Probabilidade de falha de cada requisição enquanto a API simulada está em operação — durante todo o tempo no padrão uniforme, e apenas na janela saudável no padrão de indisponibilidade (na janela de indisponibilidade a falha é sempre 100%) | 10%, 30%, 50% |
 | **C — Padrão temporal de falha** | Regime de erro da API simulada (como essas falhas se distribuem no tempo) | aleatório uniforme, indisponibilidade total temporária |
-| **D — Carga de mensagens** | Taxa de produção do producer | baixa, média, alta (Seção 7) — variado **só na triagem** |
+| **D — Carga de mensagens** | Taxa de produção do producer | **fixado em 2,5 msgs/s** — não é variado (ver justificativa abaixo) |
 | **E — Número máximo de tentativas** | Numero máximo de tentativas até o descarte | 3, 5, 10 |
 
 Justificativa da seleção: os fatores A, B e C são os que mais diretamente respondem às
-perguntas de pesquisa. O fator D é variado apenas na etapa de triagem, para checar se a
-taxa de produção tem efeito relevante sobre as métricas; no experimento principal, a taxa
-é fixada em um único valor, igual em todas as rodadas, escolhido a partir do resultado da
-triagem (Seção 8) — não é um fator comparativo do estudo principal, para que a taxa de
-chegada de mensagens não seja uma fonte adicional de variação entre as execuções que se
-comparam. O fator E é incluído na mesma etapa de triagem porque estratégias adaptativas
-podem depender de forma diferente do número de tentativas disponíveis; também é fixado no
-experimento principal.
+perguntas de pesquisa. O fator E é incluído na etapa de triagem porque estratégias
+adaptativas podem depender de forma diferente do número de tentativas disponíveis; também é
+fixado no experimento principal.
+
+**Justificativa da fixação do Fator D em 2,5 msgs/s:** o fator D foi originalmente previsto
+para ser variado na triagem, mas os pilotos mostraram que a taxa de produção não pode ser
+tratada como um fator comparativo neste sistema:
+
+- Com consumidor único e `Qos(1)`, a espera de backoff bloqueia o processamento das
+  mensagens seguintes, então a capacidade do consumidor depende da estratégia. No piloto 02
+  (`pilots/02_escala_e_capacidade`), com B=50% e E=10, a capacidade medida variou de 33,9
+  msgs/s (retry imediato) a 2,47 msgs/s (exponencial com jitter) no padrão uniforme, e
+  chegou a 0,29–1,0 msgs/s nas estratégias que mais esperam sob indisponibilidade.
+- Acima da capacidade, o consumidor opera saturado durante toda a execução (piloto 01, com
+  20 msgs/s): a fila cresce sem limite, não há regime estacionário, o tempo de recuperação
+  após uma indisponibilidade não pode ser observado e a quantidade de mensagens expostas a
+  cada janela de falha passa a depender da velocidade da estratégia, e não da chegada. Os
+  níveis previstos (5/20/50 msgs/s) estariam todos nessa condição para parte das
+  estratégias, e variar D só mudaria o tamanho da fila.
+- A taxa de 2,5 msgs/s fica no limite da capacidade da estratégia estática mais lenta no
+  pior caso medido (2,47 msgs/s com B=50% e E=10), e abaixo dela nas demais condições. Assim,
+  todas as estratégias recebem a mesma chegada de mensagens, e só as que esperam mais do
+  que essa chegada permite acumulam fila — o que passa a ser um custo mensurável dessas
+  estratégias, e não uma condição imposta a todas.
+- Com essa taxa, o experimento principal fica estimado em ~7,7h (piloto 03,
+  `pilots/03_calibracao_aimd_hpa`), dentro da janela de execução disponível.
 
 **Nota sobre os níveis do Fator C:** o fator compara falhas independentes no tempo
 (uniforme) com falhas concentradas no tempo (indisponibilidade total por uma janela) — é
@@ -159,34 +179,49 @@ falhas injetadas artificialmente, pois permite reprodutibilidade e controle expe
 
 ## 7. Seleção da carga de trabalho
 
-- **Carga:** gerada por um produtor, em 3 níveis (baixa/média/alta, ex.:5/20/50 msgs/s,
-  calibrados para a carga "alta" aproximar o consumidor da saturação) — usados **só na
-  triagem**, para avaliar o efeito do Fator D antes de fixá-lo. No experimento principal,
-  usa-se um único valor de taxa, igual em todas as rodadas (ver Seção 8).
-  Payload JSON pequeno (~100 bytes), fixo entre execuções. Volume fixo por *run* (ex.: 3.000
-  mensagens), suficiente para observar janelas de indisponibilidade completas.
+- **Carga:** gerada por um produtor, a uma taxa fixa de 2,5 msgs/s com chegadas Poisson,
+  igual em todas as execuções da triagem e do experimento principal (Fator D fixado; ver
+  justificativa na Seção 5 e piloto 02).
+  Payload JSON pequeno (~100 bytes), fixo entre execuções. Volume fixo por *run*: 1.000
+  mensagens, suficiente para observar janelas de indisponibilidade completas (piloto 01:
+  as métricas se estabilizam a partir de 1.000 mensagens).
 - **Simulador de API de terceiro:** serviço HTTP que decide, por configuração, se cada
   requisição responde `2xx` (latência configurável) ou falha, segundo o padrão do Fator C —
   aleatório uniforme (falha com probabilidade *p*) ou indisponibilidade total (100% de
   falha por uma janela, depois normal — testa teto de delay e tempo de recuperação).
 - **Calibração:** rodada piloto para garantir que `MaxDelay` seja de fato alcançado dentro
-  do número de tentativas testado, que a carga "alta" gere pressão real na fila sem
-  estourar o broker, e que os parâmetros do AIMD (Δ+, ×decremento) e do algoritmo do HPA
+  do número de tentativas testado, que a taxa de produção fique abaixo da capacidade do
+  consumidor (ver Fator D, Seção 5), e que os parâmetros do AIMD (Δ+, ×decremento) e do algoritmo do HPA
   (*setpoint*, janela observável) produzam respostas na mesma ordem de grandeza de delay das
   demais estratégias — para que a comparação não seja enviesada por uma calibração ruim.
   O HPA usa a fórmula original do Kubernetes sem ganho adicional (ver Seção 4.1); só
-  *setpoint* e janela observável precisam de calibração.
+  *setpoint* e janela observável precisam de calibração. Os pilotos de calibração, com
+  planos, dados brutos e conclusões, estão em `pilots/`:
+  - **Piloto 01** — volume de 1.000 mensagens por *run*; com 3 tentativas extras, o teto de
+    delay não era atingido; com a taxa de produção original, o consumidor operava sempre
+    saturado.
+  - **Piloto 02** — escala de tempo 1/5: todas as constantes de tempo (delays, latência da
+    API, janelas de indisponibilidade, timeout) divididas por 5, o que preserva as métricas
+    sem unidade de tempo e reduz a duração das execuções na mesma proporção. Valores
+    resultantes: delay base `100ms`, teto `1,6s` (atingido na 5ª tentativa extra do
+    exponencial), latência da API `10ms` + até `4ms`, janelas de `2s`/`2s`, taxa de
+    produção de `2,5` msgs/s (abaixo da capacidade das estratégias estáticas).
+  - **Piloto 03** — AIMD com Δ+ = `100ms` e ×`0.5` (delay de equilíbrio
+    `d* = p·Δ/((1−p)·(1−f))`, na mesma ordem de grandeza do exponencial); HPA com
+    *setpoint* `50%` e janela de `50` tentativas. No padrão uniforme, o HPA não tem ponto
+    de equilíbrio — o delay vai ao teto se B > *setpoint* e ao piso se B < *setpoint* —,
+    porque a taxa de erro da API simulada não depende do delay; o *setpoint* de 50% é o que
+    menos prende o HPA no teto entre os valores testados.
 
 ---
 
 ## 8. Design dos experimentos
 
-- **Duas fases:** (1) triagem — fatorial fracionado cobrindo os fatores A–E, com
+- **Duas fases:** (1) triagem — fatorial fracionado cobrindo os fatores A, B, C e E, com
   poucas repetições, para descartar fatores/interações sem efeito significativo; (2)
   principal — fatorial completo **A × B × C** (6 estratégias × 3 taxas de erro × 2 padrões
-  = 36 combinações), com **D fixado em um único valor de taxa de produção, igual em
-  todas as execuções** (escolhido a partir do resultado da triagem, não comparado entre
-  níveis no experimento principal) e E fixado no valor indicado pela triagem.
+  = 36 combinações), com E fixado no valor indicado pela triagem. Nas duas fases, **D fica
+  fixado em 2,5 msgs/s** (Seção 5).
 - **Repetições:** n = 30 execuções independentes por combinação. Ordem aleatorizada entre
   combinações, para não confundir efeito de fator com efeito de tempo/ambiente. Cada
   execução parte de uma instância nova do simulador de API e do consumidor.
@@ -195,7 +230,10 @@ falhas injetadas artificialmente, pois permite reprodutibilidade e controle expe
   - **por execução:** `run_id`, níveis dos fatores A–E, timestamp de início/fim, e o
     cronograma das janelas de falha aplicadas pelo simulador (início/fim de cada janela
     degradada/indisponível) — necessário para alinhar as curvas de recuperação entre
-    execuções.
+    execuções. Gravado pelo orquestrador em `runs_summary.csv` e `failure_windows.csv`;
+    o cronograma é registrado pelo próprio simulador no momento de cada troca de janela,
+    para permanecer alinhado aos timestamps das tentativas mesmo que o relógio do sistema
+    seja ajustado durante a execução.
   - **por tentativa:** `run_id`, id da mensagem, nº da tentativa, timestamp, resultado
     daquela tentativa (sucesso, timeout, erro de comunicação, erro de dado) e resultado
     final da mensagem (R1–R6). Registrar por tentativa é o que permite excluir da sobrecarga

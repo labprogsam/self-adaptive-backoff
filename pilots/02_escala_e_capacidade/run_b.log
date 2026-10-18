@@ -1,0 +1,39 @@
+2026/10/15 00:12:00 orquestrador: compilando binários em bin...
+2026/10/15 00:12:00 orquestrador: 36 execuções (12 rodadas × 3 repetições), paralelismo=20
+2026/10/15 00:13:21 [aimd_b50_e10_uniform_rep01] status=ok duração=75.4s 1000 mensagens processadas
+2026/10/15 00:13:34 [aimd_b50_e10_uniform_rep02] status=ok duração=85.6s 1000 mensagens processadas
+2026/10/15 00:13:36 [aimd_b50_e10_uniform_rep03] status=ok duração=87.4s 1000 mensagens processadas
+2026/10/15 00:15:46 [aimd_b50_e10_outage_rep01] status=ok duração=209.2s 1000 mensagens processadas
+2026/10/15 00:15:58 [aimd_b50_e10_outage_rep02] status=ok duração=217.9s 1000 mensagens processadas
+2026/10/15 00:16:17 [aimd_b50_e10_outage_rep03] status=ok duração=237.4s 1000 mensagens processadas
+2026/10/15 00:18:07 [exponential_b50_e10_uniform_rep01] status=ok duração=338.7s 1000 mensagens processadas
+2026/10/15 00:18:15 [exponential_b50_e10_uniform_rep03] status=ok duração=344.3s 1000 mensagens processadas
+2026/10/15 00:18:38 [exponential_b50_e10_uniform_rep02] status=ok duração=367.3s 1000 mensagens processadas
+2026/10/15 00:19:59 [fixed_b50_e10_outage_rep01] status=ok duração=222.1s 1000 mensagens processadas
+2026/10/15 00:20:15 [exponential_jitter_b50_e10_uniform_rep01] status=ok duração=370.0s 1000 mensagens processadas
+2026/10/15 00:20:29 [fixed_b50_e10_outage_rep02] status=ok duração=232.8s 1000 mensagens processadas
+2026/10/15 00:20:35 [fixed_b50_e10_uniform_rep01] status=ok duração=128.6s 1000 mensagens processadas
+2026/10/15 00:20:50 [exponential_jitter_b50_e10_uniform_rep02] status=ok duração=400.6s 1000 mensagens processadas
+2026/10/15 00:20:58 [fixed_b50_e10_uniform_rep02] status=ok duração=129.2s 1000 mensagens processadas
+2026/10/15 00:21:04 [none_b50_e10_outage_rep01] status=ok duração=47.0s 1000 mensagens processadas
+2026/10/15 00:21:19 [none_b50_e10_outage_rep02] status=ok duração=44.3s 1000 mensagens processadas
+2026/10/15 00:21:20 [none_b50_e10_uniform_rep01] status=ok duração=27.5s 1000 mensagens processadas
+2026/10/15 00:21:23 [none_b50_e10_outage_rep03] status=ok duração=45.3s 1000 mensagens processadas
+2026/10/15 00:21:28 [none_b50_e10_uniform_rep02] status=ok duração=27.3s 1000 mensagens processadas
+2026/10/15 00:21:35 [none_b50_e10_uniform_rep03] status=ok duração=28.1s 1000 mensagens processadas
+2026/10/15 00:22:08 [fixed_b50_e10_outage_rep03] status=ok duração=222.1s 1000 mensagens processadas
+2026/10/15 00:22:10 [exponential_jitter_b50_e10_uniform_rep03] status=ok duração=353.2s 1000 mensagens processadas
+2026/10/15 00:22:22 [fixed_b50_e10_uniform_rep03] status=ok duração=131.7s 1000 mensagens processadas
+2026/10/15 00:27:55 [exponential_b50_e10_outage_rep01] status=ok duração=881.4s 1000 mensagens processadas
+2026/10/15 00:28:44 [exponential_b50_e10_outage_rep03] status=ok duração=925.1s 1000 mensagens processadas
+2026/10/15 00:29:47 [exponential_b50_e10_outage_rep02] status=ok duração=984.9s 1000 mensagens processadas
+2026/10/15 00:32:23 [exponential_jitter_b50_e10_outage_rep01] status=ok duração=1129.8s 1000 mensagens processadas
+2026/10/15 00:34:14 [exponential_jitter_b50_e10_outage_rep02] status=ok duração=1233.3s 1000 mensagens processadas
+2026/10/15 00:37:10 [exponential_jitter_b50_e10_outage_rep03] status=ok duração=1321.4s 1000 mensagens processadas
+2026/10/15 00:40:40 [hpa_b50_e10_uniform_rep02] status=ok duração=1591.5s 1000 mensagens processadas
+2026/10/15 00:42:12 [hpa_b50_e10_uniform_rep01] status=ok duração=1676.5s 1000 mensagens processadas
+2026/10/15 00:43:23 [hpa_b50_e10_uniform_rep03] status=ok duração=1742.4s 1000 mensagens processadas
+2026/10/15 01:07:55 [hpa_b50_e10_outage_rep03] status=ok duração=3101.3s 1000 mensagens processadas
+2026/10/15 01:09:17 [hpa_b50_e10_outage_rep02] status=ok duração=3177.4s 1000 mensagens processadas
+2026/10/15 01:10:18 [hpa_b50_e10_outage_rep01] status=ok duração=3233.4s 1000 mensagens processadas
+2026/10/15 01:10:18 orquestrador: concluído. Resumo em pilots/02_escala_e_capacidade/results_b/runs_summary.csv

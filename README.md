@@ -19,7 +19,7 @@ metodologia de Raj Jain.
 https://excalidraw.com/#json=VpGgq4FiHOlLCOuhQ3M6t,BSBUnwGBCuWeysPIMm8DvQ
 
 - **Producer** — publica na fila do RabbitMQ as mensagens de `tasks.json`
-  (3000 pedidos de ~100 bytes, fixos entre execuções), numa taxa configurável
+  (1000 pedidos de ~100 bytes, fixos entre execuções), numa taxa configurável
   (Seção 7.1 do design experimental).
 - **Broker (RabbitMQ)** — fila que desacopla producer e consumer.
 - **Consumer** — consome uma mensagem por vez (`Qos(1)`), delega o envio ao
@@ -61,7 +61,7 @@ experiments/
   gen_tasks.py      # gera tasks.json (semente fixa: sempre o mesmo conteúdo)
   prefix_analysis.py # análise por prefixo: quantas mensagens por execução bastam
 pilots/      # pilotos de calibração: plano, carga, dados brutos e relatório de cada um
-tasks.json   # carga de trabalho do producer: 3000 mensagens de ~100 bytes (Seção 7.1)
+tasks.json   # carga de trabalho do producer: 1000 mensagens de ~100 bytes (Seção 7.1)
 ```
 
 - `internal/backoff` — `strategy.go` define a interface `Strategy` e a
@@ -86,6 +86,13 @@ tasks.json   # carga de trabalho do producer: 3000 mensagens de ~100 bytes (Seç
 
 ## Configuração (variáveis de ambiente)
 
+Os padrões de tempo estão na **escala 1/5** validada no piloto 02
+(`pilots/02_escala_e_capacidade`): todas as constantes de tempo divididas por 5
+em relação a valores realistas (ex.: delay base de 500ms → 100ms, latência da
+API de 50ms → 10ms), o que preserva as métricas sem unidade de tempo e deixa o
+experimento principal ~5× mais rápido. Os parâmetros do AIMD e do HPA são os
+calibrados no piloto 03 (`pilots/03_calibracao_aimd_hpa`).
+
 ### Consumer / Producer (`internal/config`)
 
 | Variável | Descrição | Padrão |
@@ -93,7 +100,7 @@ tasks.json   # carga de trabalho do producer: 3000 mensagens de ~100 bytes (Seç
 | `AMQP_URL` | URL de conexão do RabbitMQ | `amqp://guest:guest@localhost:5672/` |
 | `QUEUE_NAME` | Nome da fila | `tasks` |
 | `API_URL` | Endpoint chamado via `POST` | `http://localhost:9091/process` |
-| `HTTP_TIMEOUT` | Timeout do cliente HTTP | `30s` |
+| `HTTP_TIMEOUT` | Timeout do cliente HTTP | `6s` |
 | `TASKS_FILE` | Arquivo de mensagens lido pelo producer | `tasks.json` |
 | `RUN_ID` | Identifica a execução no CSV de métricas | timestamp atual |
 | `METRICS_FILE` | Caminho do CSV de métricas por tentativa | `metrics/attempts.csv` |
@@ -103,20 +110,20 @@ tasks.json   # carga de trabalho do producer: 3000 mensagens de ~100 bytes (Seç
 | Variável | Descrição | Padrão |
 |---|---|---|
 | `BACKOFF_STRATEGY` | `none` \| `fixed` \| `exponential` \| `exponential_jitter` \| `aimd` \| `hpa` | `exponential_jitter` |
-| `BASE_BACKOFF` | Delay base (estratégias estáticas) / delay inicial (AIMD, HPA) | `500ms` |
-| `MAX_BACKOFF` | Teto de delay | `30s` |
-| `MIN_BACKOFF` | Piso de delay (AIMD, HPA) | `50ms` |
+| `BASE_BACKOFF` | Delay base (estratégias estáticas) / delay inicial (AIMD, HPA) | `100ms` |
+| `MAX_BACKOFF` | Teto de delay | `1600ms` |
+| `MIN_BACKOFF` | Piso de delay (AIMD, HPA) | `10ms` |
 | `MAX_RETRIES` | Fator E — nº máximo de tentativas extras antes do descarte | `3` |
 | `AIMD_INCREMENT` | Δ+ somado ao delay a cada falha (nível 5) | `100ms` |
 | `AIMD_DECREASE_FACTOR` | Multiplicador aplicado ao delay a cada sucesso (nível 5) | `0.5` |
-| `HPA_SETPOINT` | Taxa de erro-alvo (nível 6) | `0.05` |
-| `HPA_WINDOW_SIZE` | Tamanho da janela observável (nível 6) | `20` |
+| `HPA_SETPOINT` | Taxa de erro-alvo (nível 6) | `0.5` |
+| `HPA_WINDOW_SIZE` | Tamanho da janela observável, em tentativas (nível 6) | `50` |
 
 **Carga de trabalho do producer (Seção 7.1):**
 
 | Variável | Descrição | Padrão |
 |---|---|---|
-| `PRODUCER_RATE` | Taxa de publicação, em mensagens/segundo | `20` |
+| `PRODUCER_RATE` | Taxa de publicação, em mensagens/segundo | `2.5` |
 | `PRODUCER_POISSON` | `true`: intervalos entre publicações com distribuição Poisson; `false`: intervalo fixo | `true` |
 
 ### apisim (`internal/apisim`, variáveis próprias — serviço independente)
@@ -126,13 +133,16 @@ tasks.json   # carga de trabalho do producer: 3000 mensagens de ~100 bytes (Seç
 | `APISIM_ADDR` | Endereço de escuta | `:9091` |
 | `APISIM_ERROR_RATE` | Fator B — taxa de erro de base (0 a 1) | `0.1` |
 | `APISIM_PATTERN` | Fator C — `uniform` \| `outage` | `uniform` |
-| `APISIM_HEALTHY_WINDOW` | Duração da janela saudável, com taxa `APISIM_ERROR_RATE` (`outage`) | `10s` |
-| `APISIM_OUTAGE_WINDOW` | Duração da janela de indisponibilidade, com 100% de falha (`outage`) | `10s` |
-| `APISIM_LATENCY_MEAN` | Latência simulada de resposta em caso de sucesso | `50ms` |
-| `APISIM_LATENCY_JITTER` | Variação aleatória (uniforme) somada à latência | `20ms` |
+| `APISIM_HEALTHY_WINDOW` | Duração da janela saudável, com taxa `APISIM_ERROR_RATE` (`outage`) | `2s` |
+| `APISIM_OUTAGE_WINDOW` | Duração da janela de indisponibilidade, com 100% de falha (`outage`) | `2s` |
+| `APISIM_LATENCY_MEAN` | Latência simulada de resposta em caso de sucesso | `10ms` |
+| `APISIM_LATENCY_JITTER` | Variação aleatória (uniforme) somada à latência | `4ms` |
 | `APISIM_TIMEOUT_SHARE` | Fração das falhas que viram resposta lenta (simula timeout no cliente) | `0` |
-| `APISIM_TIMEOUT_DELAY` | Duração da resposta lenta | `5s` |
+| `APISIM_TIMEOUT_DELAY` | Duração da resposta lenta | `1s` |
 | `APISIM_RESET_SHARE` | Fração das falhas que viram reset abrupto de conexão (simula erro de comunicação) | `0` |
+| `APISIM_ID` | Identificador devolvido por `GET /__health` (usado pelo orquestrador para saber que o apisim certo está pronto) | vazio |
+| `APISIM_INFO_FILE` | Se definido, recebe um JSON com o instante de início do ciclo de falhas e a configuração efetiva | vazio |
+| `APISIM_WINDOWS_FILE` | Se definido (padrão `outage`), recebe uma linha por troca de janela, com o horário da troca | vazio |
 
 ## Como executar
 
@@ -160,11 +170,11 @@ BACKOFF_STRATEGY=exponential_jitter go run ./cmd/consumer
 
 ### 4. Publique mensagens de teste com o producer
 
-O producer publica as 3000 mensagens de `tasks.json`, a `PRODUCER_RATE`
-msgs/s:
+O producer publica as 1000 mensagens de `tasks.json`, a `PRODUCER_RATE`
+msgs/s (padrão 2,5):
 
 ```bash
-PRODUCER_RATE=20 go run ./cmd/producer
+go run ./cmd/producer
 ```
 
 ### 5. Confira as métricas coletadas
@@ -176,10 +186,8 @@ experimental.
 ## Exemplo: rodando uma combinação de fatores (triagem)
 
 ```bash
-# Terminal 1 — API simulada com 30% de erro e indisponibilidade de 10s a cada 20s
-APISIM_PATTERN=outage APISIM_ERROR_RATE=0.3 \
-APISIM_HEALTHY_WINDOW=10s APISIM_OUTAGE_WINDOW=10s \
-  go run ./cmd/apisim
+# Terminal 1 — API simulada com 30% de erro e indisponibilidade de 2s a cada 4s
+APISIM_PATTERN=outage APISIM_ERROR_RATE=0.3 go run ./cmd/apisim
 
 # Terminal 2 — consumidor com AIMD
 RUN_ID=screening_aimd_b30_outage \
@@ -187,8 +195,8 @@ BACKOFF_STRATEGY=aimd MAX_RETRIES=5 \
 METRICS_FILE=metrics/screening_aimd_b30_outage.csv \
   go run ./cmd/consumer
 
-# Terminal 3 — carga de tasks.json (3000 mensagens de ~100 bytes) a 20 msgs/s
-RUN_ID=screening_aimd_b30_outage PRODUCER_RATE=20 go run ./cmd/producer
+# Terminal 3 — carga de tasks.json (1000 mensagens de ~100 bytes) a 2,5 msgs/s
+RUN_ID=screening_aimd_b30_outage go run ./cmd/producer
 ```
 
 Repita trocando `BACKOFF_STRATEGY`/`APISIM_*`/`RUN_ID` para cobrir as demais
@@ -212,8 +220,8 @@ go run ./cmd/orchestrator \
   -drain-timeout 20m
 ```
 
-`experiments/example_plan.json` é só um **exemplo/template** (3 rodadas × 2
-repetições, 3000 mensagens cada) para validar o mecanismo — não é o
+`experiments/example_plan.json` é só um **exemplo/template** (3 rodadas, 1000
+mensagens cada, parâmetros calibrados por padrão) para validar o mecanismo — não é o
 plano de triagem nem o do experimento principal, que ainda dependem dos
 valores de calibração da Seção 7.3 e da escolha do desenho fatorial
 fracionado da triagem (Seção 8). Monte o plano real editando esse arquivo:
@@ -227,10 +235,26 @@ O orquestrador conta as mensagens do arquivo de tarefas (`TASKS_FILE`, padrão
 da API de management do RabbitMQ (ele conta, no CSV de métricas da própria
 rodada, quantas mensagens distintas já têm um resultado final registrado).
 
-Saída: um CSV de métricas por execução, agrupado por rodada
-(`metrics/<round_name>/<run_id>.csv`, schema da
-Seção 8) e um resumo (`metrics/runs_summary.csv`) com status/duração de cada
-execução. A saída dos processos filhos é descartada por padrão; para depurar,
+Ordem das execuções: embaralhada por padrão (Seção 8 do design experimental:
+ordem aleatorizada entre combinações). A semente vem de `-seed` (ou do relógio,
+se omitida) e a ordem usada fica registrada em `metrics/execution_order.csv`
+(posição, `run_id` e semente) — rodar de novo com a mesma `-seed` reproduz a
+mesma ordem. `-shuffle=false` mantém a ordem do plano (útil só para depuração).
+
+Saída (Seção 8 do design experimental):
+- **Por tentativa:** um CSV por execução, agrupado por rodada
+  (`metrics/<round_name>/<run_id>.csv`).
+- **Por execução:** `metrics/runs_summary.csv`, com status, início/fim, duração,
+  os níveis efetivos dos Fatores A–E (incluindo os defaults), os parâmetros
+  fixados e calibrados e o instante de início do ciclo de falhas do apisim.
+- **Cronograma das janelas de falha:** `metrics/failure_windows.csv`, com o
+  início e o fim de cada janela saudável/indisponível de cada execução no padrão
+  `outage`, registrados pelo próprio apisim no momento de cada troca (assim o
+  cronograma fica alinhado com os timestamps das tentativas mesmo se o relógio
+  do sistema for ajustado durante a execução).
+- **Ordem das execuções:** `metrics/execution_order.csv`.
+
+ A saída dos processos filhos é descartada por padrão; para depurar,
 passe `-log-dir logs` e cada processo grava em
 `logs/<run_id>_{consumer,apisim,producer}.log`.
 

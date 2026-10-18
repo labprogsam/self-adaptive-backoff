@@ -8,6 +8,7 @@ package orchestrator
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 )
 
@@ -74,8 +75,8 @@ type Execution struct {
 }
 
 // Expand gera todas as execuções (rodada × repetição) do plano, na ordem em
-// que aparecem — a aleatorização da ordem de execução (Seção 8.2) deve ser
-// feita embaralhando o slice retornado, se desejado, antes de rodar.
+// que aparecem — a aleatorização da ordem de execução (Seção 8.2) é feita
+// depois, por Shuffle.
 func Expand(p Plan) []Execution {
 	executions := make([]Execution, 0, len(p.Rounds)*p.Repetitions)
 	for _, r := range p.Rounds {
@@ -91,4 +92,16 @@ func Expand(p Plan) []Execution {
 		}
 	}
 	return executions
+}
+
+// Shuffle embaralha a ordem das execuções com uma semente explícita: a ordem
+// aleatorizada entre combinações exigida pela Seção 8.2 do design
+// experimental, para não confundir efeito de fator com efeito de
+// tempo/ambiente. A mesma semente sempre produz a mesma ordem, o que permite
+// registrar e reproduzir a ordem usada em cada experimento.
+func Shuffle(executions []Execution, seed int64) {
+	r := rand.New(rand.NewSource(seed))
+	r.Shuffle(len(executions), func(i, j int) {
+		executions[i], executions[j] = executions[j], executions[i]
+	})
 }

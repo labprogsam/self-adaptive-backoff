@@ -47,32 +47,44 @@ type Config struct {
 	ProducerPoisson bool
 }
 
+// Load lê a configuração das variáveis de ambiente do processo. Os defaults de
+// tempo estão na escala 1/5 validada no piloto 02
+// (pilots/02_escala_e_capacidade) e os do AIMD/HPA são os calibrados no piloto
+// 03 (pilots/03_calibracao_aimd_hpa).
 func Load() Config {
+	return LoadFrom(os.Getenv)
+}
+
+// LoadFrom é Load com uma fonte de variáveis explícita — usado pelo
+// orquestrador para calcular a configuração efetiva de cada processo filho a
+// partir do mesmo ambiente que ele recebe (registro por execução, Seção 8).
+func LoadFrom(getenv func(string) string) Config {
+	e := env(getenv)
 	return Config{
-		AMQPUrl:     getEnv("AMQP_URL", "amqp://guest:guest@localhost:5672/"),
-		QueueName:   getEnv("QUEUE_NAME", "tasks"),
-		APIUrl:      getEnv("API_URL", "http://localhost:9091/process"),
-		TasksFile:   getEnv("TASKS_FILE", "tasks.json"),
-		HTTPTimeout: getEnvDuration("HTTP_TIMEOUT", 30*time.Second),
+		AMQPUrl:     e.get("AMQP_URL", "amqp://guest:guest@localhost:5672/"),
+		QueueName:   e.get("QUEUE_NAME", "tasks"),
+		APIUrl:      e.get("API_URL", "http://localhost:9091/process"),
+		TasksFile:   e.get("TASKS_FILE", "tasks.json"),
+		HTTPTimeout: e.getDuration("HTTP_TIMEOUT", 6*time.Second),
 
-		BackoffStrategy: getEnv("BACKOFF_STRATEGY", "exponential_jitter"),
-		BaseBackoff:     getEnvDuration("BASE_BACKOFF", 500*time.Millisecond),
-		MaxBackoff:      getEnvDuration("MAX_BACKOFF", 30*time.Second),
-		MinBackoff:      getEnvDuration("MIN_BACKOFF", 50*time.Millisecond),
+		BackoffStrategy: e.get("BACKOFF_STRATEGY", "exponential_jitter"),
+		BaseBackoff:     e.getDuration("BASE_BACKOFF", 100*time.Millisecond),
+		MaxBackoff:      e.getDuration("MAX_BACKOFF", 1600*time.Millisecond),
+		MinBackoff:      e.getDuration("MIN_BACKOFF", 10*time.Millisecond),
 
-		MaxRetries: getEnvInt("MAX_RETRIES", 3),
+		MaxRetries: e.getInt("MAX_RETRIES", 3),
 
-		AIMDIncrement:      getEnvDuration("AIMD_INCREMENT", 100*time.Millisecond),
-		AIMDDecreaseFactor: getEnvFloat("AIMD_DECREASE_FACTOR", 0.5),
+		AIMDIncrement:      e.getDuration("AIMD_INCREMENT", 100*time.Millisecond),
+		AIMDDecreaseFactor: e.getFloat("AIMD_DECREASE_FACTOR", 0.5),
 
-		HPASetpoint:   getEnvFloat("HPA_SETPOINT", 0.05),
-		HPAWindowSize: getEnvInt("HPA_WINDOW_SIZE", 20),
+		HPASetpoint:   e.getFloat("HPA_SETPOINT", 0.5),
+		HPAWindowSize: e.getInt("HPA_WINDOW_SIZE", 50),
 
-		RunID:       getEnv("RUN_ID", defaultRunID()),
-		MetricsFile: getEnv("METRICS_FILE", "metrics/attempts.csv"),
+		RunID:       e.get("RUN_ID", defaultRunID()),
+		MetricsFile: e.get("METRICS_FILE", "metrics/attempts.csv"),
 
-		ProducerRate:    getEnvFloat("PRODUCER_RATE", 20),
-		ProducerPoisson: getEnvBool("PRODUCER_POISSON", true),
+		ProducerRate:    e.getFloat("PRODUCER_RATE", 2.5),
+		ProducerPoisson: e.getBool("PRODUCER_POISSON", true),
 	}
 }
 
@@ -80,15 +92,18 @@ func defaultRunID() string {
 	return time.Now().Format("20060102T150405")
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+// env lê variáveis com fallback para o default quando ausentes ou inválidas.
+type env func(string) string
+
+func (e env) get(key, fallback string) string {
+	if v := e(key); v != "" {
 		return v
 	}
 	return fallback
 }
 
-func getEnvDuration(key string, fallback time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
+func (e env) getDuration(key string, fallback time.Duration) time.Duration {
+	if v := e(key); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
 			return d
 		}
@@ -96,8 +111,8 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 	return fallback
 }
 
-func getEnvInt(key string, fallback int) int {
-	if v := os.Getenv(key); v != "" {
+func (e env) getInt(key string, fallback int) int {
+	if v := e(key); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			return n
 		}
@@ -105,8 +120,8 @@ func getEnvInt(key string, fallback int) int {
 	return fallback
 }
 
-func getEnvFloat(key string, fallback float64) float64 {
-	if v := os.Getenv(key); v != "" {
+func (e env) getFloat(key string, fallback float64) float64 {
+	if v := e(key); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			return f
 		}
@@ -114,8 +129,8 @@ func getEnvFloat(key string, fallback float64) float64 {
 	return fallback
 }
 
-func getEnvBool(key string, fallback bool) bool {
-	if v := os.Getenv(key); v != "" {
+func (e env) getBool(key string, fallback bool) bool {
+	if v := e(key); v != "" {
 		if b, err := strconv.ParseBool(v); err == nil {
 			return b
 		}

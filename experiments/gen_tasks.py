@@ -1,4 +1,4 @@
-"""Gera tasks.json: 3000 pedidos sintéticos pequenos (~100 bytes cada).
+"""Gera tasks.json: 1000 pedidos sintéticos pequenos (~100 bytes cada).
 
 O payload é mantido pequeno de propósito: nem o consumer nem o apisim
 validam o conteúdo além de ser um objeto JSON, então o tamanho não
@@ -11,7 +11,7 @@ import json
 import random
 import sys
 
-COUNT = 3000
+COUNT = 1000  # volume por execução definido no piloto 01 (pilots/01_piloto_inicial)
 
 rng = random.Random(42)
 actions = ["process"] * 8 + ["cancel", "refund"]

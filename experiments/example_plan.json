@@ -1,11 +1,7 @@
 {
   "repetitions": 30,
   "shared_env": {
-    "AMQP_URL": "amqp://guest:guest@localhost:5672/",
-    "MAX_RETRIES": "4",
-    "BASE_BACKOFF": "100ms",
-    "MAX_BACKOFF": "2s",
-    "PRODUCER_RATE": "30"
+    "AMQP_URL": "amqp://guest:guest@localhost:5672/"
   },
   "rounds": [
     {
@@ -23,9 +19,7 @@
       "consumer_env": { "BACKOFF_STRATEGY": "aimd" },
       "apisim_env": {
         "APISIM_ERROR_RATE": "0.3",
-        "APISIM_PATTERN": "outage",
-        "APISIM_HEALTHY_WINDOW": "3s",
-        "APISIM_OUTAGE_WINDOW": "3s"
+        "APISIM_PATTERN": "outage"
       }
     }
   ]

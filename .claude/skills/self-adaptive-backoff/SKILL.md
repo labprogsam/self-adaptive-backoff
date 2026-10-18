@@ -55,6 +55,13 @@ métricas).
   (ver nota da Seção 5 do design experimental). Por isso `consumer.Run` cria a estratégia
   **uma única vez** por processo (não por mensagem) e a reutiliza entre reconexões do
   RabbitMQ.
+- **Os defaults de tempo estão na escala 1/5** (piloto 02, `pilots/02_escala_e_capacidade`):
+  delays, latência da API, janelas de indisponibilidade e timeouts são 1/5 de valores
+  realistas, e `PRODUCER_RATE` (2,5 msgs/s) foi escolhido abaixo da capacidade das
+  estratégias estáticas. Ao mudar qualquer constante de tempo, mantenha a proporção entre
+  elas — mudar só uma quebra a equivalência com a escala original. Os parâmetros do AIMD
+  (Δ=100ms, f=0,5) e do HPA (setpoint 0,5, janela 50) são os calibrados no piloto 03
+  (`pilots/03_calibracao_aimd_hpa`); não os altere sem um novo piloto que justifique.
 - **Fonte da verdade dos parâmetros é `internal/config/config.go`**, não o README — mas
   agora ambos devem bater, já que todo parâmetro experimental (Fator A–E, carga do
   producer) é configurável via env var com default documentado no README. Ao mudar um
@@ -153,13 +160,21 @@ são opcionais (default 0) para gerar timeouts/reset de conexão reais além do 
 úteis se for necessário diferenciar R5/R6 no schema de saída.
 
 **Mexer na coleta de métricas (`internal/metrics`):** o schema atual é "por tentativa"
-(Seção 8). Não existe hoje um registro "por execução" (run-level: cronograma das janelas
-de falha, timestamp de início/fim) — isso ficou como lacuna consciente (ver conversa que
-gerou esta implementação): o cronograma de falha do `apisim` é determinístico a partir de
-`APISIM_PATTERN` + janelas + horário de início do processo, então pode ser reconstruído
-sem precisar que o `apisim` emita eventos, mas não há hoje nenhuma automação que faça essa
-correlação — ao analisar os dados, isso precisa ser calculado manualmente a partir dos
-parâmetros usados em cada execução.
+(Seção 8). O registro "por execução" é gravado pelo orquestrador (`internal/orchestrator/summary.go`):
+`runs_summary.csv` tem, por execução, status, início/fim, os níveis efetivos dos fatores
+A–E, os parâmetros fixados/calibrados e o instante de início do ciclo de falhas do apisim
+(calculados com `config.LoadFrom` sobre o mesmo ambiente passado ao processo, então incluem
+os defaults); `failure_windows.csv` tem o cronograma de cada janela saudável/indisponível.
+  - **O cronograma vem do próprio apisim** (`APISIM_WINDOWS_FILE`): ele grava cada troca de
+    janela no momento em que acontece, com o relógio de parede daquele instante. Não troque
+    isso por uma reconstrução a partir de `apisim_started_at` + durações: o apisim mede as
+    janelas com o relógio monotônico, e no WSL2 o relógio de parede salta (ex.: +1,2s depois
+    de suspender a máquina), o que desalinha um cronograma recalculado dos timestamps das
+    tentativas. Pelo mesmo motivo, use `duration_ms`/`wait_after_ms` (monotônicos) para
+    durações, e não diferenças entre `timestamp`s.
+  - **Prontidão do apisim:** o orquestrador espera `/__health` responder com o `APISIM_ID`
+    da execução, não só a porta aceitar conexão — no loopback, uma auto-conexão TCP pode
+    fazer a porta parecer aberta antes do apisim subir.
 
 **Antes de mudar um parâmetro "fixado"** (BaseDelay, MaxDelay, jitter, HTTPTimeout,
 Qos, nº de instâncias) — confira a Seção 5 de `Design_experimental.md`: esses valores
@@ -173,6 +188,13 @@ reproduzir, resultados e decisões — siga `pilots/01_piloto_inicial/` como mod
 o piloto ao índice em `pilots/README.md`. Os CSVs de `pilots/` são versionados de propósito
 (exceção no `.gitignore`): são a evidência das escolhas do experimento; não os apague nem
 os mova para `metrics/`.
+
+**Ordem das execuções:** o orquestrador embaralha a ordem por padrão (`-shuffle=true`,
+Seção 8 do design: ordem aleatorizada entre combinações), com semente de `-seed` ou do
+relógio, e grava a ordem usada em `<metrics-dir>/execution_order.csv`. Não desligue o
+embaralhamento em pilotos ou experimentos de verdade — só para depuração. Com ordem
+aleatória, uma execução longa (ex.: HPA) pode cair no fim e alongar o tempo total; isso é
+o custo aceito da aleatorização.
 
 **Montar/editar um plano de experimento para o orquestrador:** edite um JSON com
 `repetitions`, `shared_env` (vale para todas as rodadas — é onde fica `PRODUCER_RATE`, a

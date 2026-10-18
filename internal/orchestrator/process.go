@@ -2,13 +2,17 @@ package orchestrator
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
+
+	"self-adaptive-backoff/internal/apisim"
 )
 
 // freePort reserva uma porta livre no loopback. O listener é devolvido junto
@@ -24,18 +28,32 @@ func freePort() (int, *net.TCPListener, error) {
 	return port, l.(*net.TCPListener), nil
 }
 
-func waitPortOpen(port int, timeout time.Duration) error {
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
+// waitApisimReady espera o apisim da execução responder em /__health com o
+// próprio ID. Uma resposta HTTP com o ID certo garante que o processo
+// esperado já está servindo — só testar se a porta aceita conexão TCP não
+// basta: num endereço local sem ninguém escutando, o kernel pode escolher a
+// própria porta de destino como origem e a conexão "abre" consigo mesma
+// (auto-conexão TCP), fazendo a porta parecer pronta antes do apisim subir.
+func waitApisimReady(port int, id string, timeout time.Duration) error {
+	url := fmt.Sprintf("http://127.0.0.1:%d%s", port, apisim.HealthPath)
+	client := &http.Client{Timeout: 200 * time.Millisecond}
 	deadline := time.Now().Add(timeout)
+	var lastErr error
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+		resp, err := client.Get(url)
 		if err == nil {
-			conn.Close()
-			return nil
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK && string(body) == id {
+				return nil
+			}
+			lastErr = fmt.Errorf("resposta inesperada (status %d, id %q)", resp.StatusCode, body)
+		} else {
+			lastErr = err
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
-	return fmt.Errorf("porta %d não abriu em %s", port, timeout)
+	return fmt.Errorf("apisim na porta %d não ficou pronto em %s: %v", port, timeout, lastErr)
 }
 
 // buildEnv mescla o ambiente atual do processo com uma sequência de overrides

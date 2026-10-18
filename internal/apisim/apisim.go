@@ -10,6 +10,7 @@
 package apisim
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -47,8 +48,42 @@ type Config struct {
 	TimeoutShare float64
 	TimeoutDelay time.Duration
 	ResetShare   float64
+
+	// InfoFile, se não vazio, recebe um JSON (Info) com o instante em que o
+	// ciclo de falhas começou e a configuração efetiva — é o que permite
+	// reconstruir o cronograma exato das janelas de indisponibilidade de cada
+	// execução (registro por execução, Seção 8). Opcional.
+	InfoFile string
+	// WindowsFile, se não vazio (e o padrão for outage), recebe uma linha CSV
+	// "índice,tipo,início" a cada troca de janela, com o relógio de parede do
+	// momento da troca. Registrar cada troca quando ela acontece (em vez de
+	// recalcular o cronograma depois a partir de StartedAt) mantém as janelas
+	// alinhadas com os timestamps das tentativas mesmo se o relógio de parede
+	// for ajustado durante a execução — as janelas em si são medidas com o
+	// relógio monotônico. Opcional.
+	WindowsFile string
+	// ID identifica esta instância: é devolvido por /__health, para quem a
+	// iniciou confirmar que está falando com ela (e não com outro processo na
+	// mesma porta). Opcional.
+	ID string
 }
 
+// Info é o conteúdo gravado em Config.InfoFile. Durações em milissegundos.
+type Info struct {
+	StartedAt       time.Time `json:"started_at"`
+	Pattern         string    `json:"pattern"`
+	ErrorRate       float64   `json:"error_rate"`
+	HealthyWindowMs float64   `json:"healthy_window_ms"`
+	OutageWindowMs  float64   `json:"outage_window_ms"`
+	LatencyMeanMs   float64   `json:"latency_mean_ms"`
+	LatencyJitterMs float64   `json:"latency_jitter_ms"`
+	TimeoutShare    float64   `json:"timeout_share"`
+	TimeoutDelayMs  float64   `json:"timeout_delay_ms"`
+	ResetShare      float64   `json:"reset_share"`
+}
+
+// LoadConfig lê a configuração das variáveis de ambiente. Os defaults de tempo
+// estão na escala 1/5 validada no piloto 02 (pilots/02_escala_e_capacidade).
 func LoadConfig() Config {
 	return Config{
 		Addr: getEnv("APISIM_ADDR", ":9091"),
@@ -56,15 +91,20 @@ func LoadConfig() Config {
 		ErrorRate: getEnvFloat("APISIM_ERROR_RATE", 0.1),
 		Pattern:   getEnv("APISIM_PATTERN", "uniform"),
 
-		HealthyWindow: getEnvDuration("APISIM_HEALTHY_WINDOW", 10*time.Second),
-		OutageWindow:  getEnvDuration("APISIM_OUTAGE_WINDOW", 10*time.Second),
+		HealthyWindow: getEnvDuration("APISIM_HEALTHY_WINDOW", 2*time.Second),
+		OutageWindow:  getEnvDuration("APISIM_OUTAGE_WINDOW", 2*time.Second),
 
-		LatencyMean:   getEnvDuration("APISIM_LATENCY_MEAN", 50*time.Millisecond),
-		LatencyJitter: getEnvDuration("APISIM_LATENCY_JITTER", 20*time.Millisecond),
+		LatencyMean:   getEnvDuration("APISIM_LATENCY_MEAN", 10*time.Millisecond),
+		LatencyJitter: getEnvDuration("APISIM_LATENCY_JITTER", 4*time.Millisecond),
 
 		TimeoutShare: getEnvFloat("APISIM_TIMEOUT_SHARE", 0),
-		TimeoutDelay: getEnvDuration("APISIM_TIMEOUT_DELAY", 5*time.Second),
+		TimeoutDelay: getEnvDuration("APISIM_TIMEOUT_DELAY", 1*time.Second),
 		ResetShare:   getEnvFloat("APISIM_RESET_SHARE", 0),
+
+		InfoFile: getEnv("APISIM_INFO_FILE", ""),
+		ID:       getEnv("APISIM_ID", ""),
+
+		WindowsFile: getEnv("APISIM_WINDOWS_FILE", ""),
 	}
 }
 
@@ -96,7 +136,76 @@ func (s *Server) currentErrorRate() float64 {
 	}
 }
 
+// Info descreve o servidor: instante de início do ciclo de falhas e
+// configuração efetiva.
+func (s *Server) Info() Info {
+	ms := func(d time.Duration) float64 { return float64(d) / float64(time.Millisecond) }
+	return Info{
+		StartedAt:       s.start,
+		Pattern:         s.cfg.Pattern,
+		ErrorRate:       s.cfg.ErrorRate,
+		HealthyWindowMs: ms(s.cfg.HealthyWindow),
+		OutageWindowMs:  ms(s.cfg.OutageWindow),
+		LatencyMeanMs:   ms(s.cfg.LatencyMean),
+		LatencyJitterMs: ms(s.cfg.LatencyJitter),
+		TimeoutShare:    s.cfg.TimeoutShare,
+		TimeoutDelayMs:  ms(s.cfg.TimeoutDelay),
+		ResetShare:      s.cfg.ResetShare,
+	}
+}
+
+// recordWindows grava cada troca de janela do padrão outage no momento em que
+// ela acontece. Os instantes das trocas são calculados a partir de s.start
+// com o relógio monotônico (o mesmo que currentErrorRate usa); o horário
+// gravado é o relógio de parede no momento da troca.
+func (s *Server) recordWindows(f *os.File) {
+	durations := [2]time.Duration{s.cfg.HealthyWindow, s.cfg.OutageWindow}
+	kinds := [2]string{"healthy", "outage"}
+	if durations[0]+durations[1] <= 0 {
+		return
+	}
+	var offset time.Duration
+	for i := 0; ; i++ {
+		d := durations[i%2]
+		if d <= 0 {
+			continue
+		}
+		time.Sleep(time.Until(s.start.Add(offset)))
+		now := time.Now().Round(0) // só o relógio de parede
+		if _, err := fmt.Fprintf(f, "%d,%s,%s\n", i, kinds[i%2], now.Format(time.RFC3339Nano)); err != nil {
+			log.Printf("apisim: erro ao gravar janela: %v", err)
+			return
+		}
+		offset += d
+	}
+}
+
+// writeInfo grava o arquivo de forma atômica (arquivo temporário + rename),
+// para que quem o lê nunca veja um JSON pela metade.
+func writeInfo(path string, info Info) error {
+	data, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return fmt.Errorf("erro ao gravar %q: %w", path, err)
+	}
+	return os.Rename(tmp, path)
+}
+
+// HealthPath responde na hora com 200 e o ID da instância, fora da simulação
+// de falhas e latência — não é chamado pelo consumer, só por quem precisa
+// saber se o apisim já está pronto.
+const HealthPath = "/__health"
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == HealthPath {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(s.cfg.ID))
+		return
+	}
+
 	// O conteúdo do corpo não importa para a simulação; só precisa ser
 	// consumido para a conexão poder ser reaproveitada.
 	_, _ = io.Copy(io.Discard, r.Body)
@@ -145,6 +254,19 @@ func Run(cfg Config) error {
 		return fmt.Errorf("APISIM_PATTERN inválido: %q (esperado: uniform | outage)", cfg.Pattern)
 	}
 	s := New(cfg)
+	if cfg.InfoFile != "" {
+		if err := writeInfo(cfg.InfoFile, s.Info()); err != nil {
+			return err
+		}
+	}
+	if cfg.WindowsFile != "" && cfg.Pattern == "outage" {
+		f, err := os.Create(cfg.WindowsFile)
+		if err != nil {
+			return fmt.Errorf("erro ao criar %q: %w", cfg.WindowsFile, err)
+		}
+		defer f.Close()
+		go s.recordWindows(f)
+	}
 	log.Printf("apisim: escutando em %s | pattern=%s error_rate=%.2f latency=%s±%s",
 		cfg.Addr, cfg.Pattern, cfg.ErrorRate, cfg.LatencyMean, cfg.LatencyJitter)
 	if cfg.Pattern == "outage" {
