@@ -2,13 +2,12 @@
 
 - **Etapa do design experimental:** calibração (Seção 7)
 - **Pergunta principal:** quantas mensagens por execução bastam para métricas estáveis?
-- **Perguntas secundárias:** o simulador gera as falhas configuradas? Executar rodadas em
-  paralelo distorce as medições? Os valores de referência (`MAX_BACKOFF`, taxa do producer,
+- **Perguntas secundárias:** o simulador gera as falhas configuradas? Executar rodadas concorrentes distorce as medições? Os valores de referência (`MAX_BACKOFF`, taxa do producer,
   janelas de indisponibilidade) são adequados?
 
 ## Configuração
 
-4 combinações × 10 repetições = 40 execuções, 3000 mensagens cada, 20 execuções em paralelo.
+4 combinações × 10 repetições = 40 execuções, 3000 mensagens cada, 20 execuções concorrentes.
 
 | Combinação (`round`) | Fator A | Fator B | Fator C |
 |---|---|---|---|
@@ -26,7 +25,7 @@ Parâmetros fixos:
 | `BASE_BACKOFF` / `MAX_BACKOFF` | 500ms / 30s |
 | Fator D (`PRODUCER_RATE`) | 20 msgs/s, chegadas Poisson |
 | Latência da API simulada | 50ms + variação uniforme de 0 a 20ms (padrões do `apisim`) |
-| Paralelismo do orquestrador | 20 execuções simultâneas |
+| Concorrência do orquestrador | 20 execuções simultâneas |
 
 Combinações extremas de propósito: B=50% é o nível mais alto de erro, e as duas estratégias
 são os extremos de "não esperar" e "esperar cada vez mais". AIMD e HPA ficaram de fora porque
@@ -49,7 +48,7 @@ A partir da raiz do repositório, com o RabbitMQ rodando:
 ```bash
 TASKS_FILE=pilots/01_piloto_inicial/tasks.json \
 go run ./cmd/orchestrator -plan pilots/01_piloto_inicial/plan.json \
-  -parallel 20 -metrics-dir pilots/01_piloto_inicial/results -drain-timeout 3h
+  -concurrency 20 -metrics-dir pilots/01_piloto_inicial/results -drain-timeout 3h
 
 python3 experiments/prefix_analysis.py pilots/01_piloto_inicial/results \
   --prefixes 250,500,750,1000,1500,2000,2500,3000 --tol 0.02 \
@@ -72,7 +71,7 @@ Latência média das chamadas: 60,5ms, contra 60ms esperados (50ms + média de 1
 No padrão de indisponibilidade com B=50% e janelas de 10s/10s, a taxa média de erro esperada
 é de 75%; o retry imediato observou 74,6% das tentativas com falha.
 
-### 2. Executar 20 rodadas em paralelo não distorceu as medições
+### 2. Executar 20 rodadas concorrentes não distorceu as medições
 
 A latência das chamadas ficou em 60,5ms em todas as combinações, tanto nas tentativas com
 sucesso quanto nas com falha: não houve contenção de CPU ou do broker. A duração variou menos
@@ -159,7 +158,7 @@ caem depois da janela de indisponibilidade. É uma interação entre os Fatores 
 | # | Conclusão | Decisão |
 |---|---|---|
 | 1 | O simulador reproduz as taxas de falha configuradas | Usar o `apisim` como está |
-| 2 | Paralelismo de 20 execuções não altera a latência medida | Permitir paralelismo entre execuções no experimento principal |
+| 2 | Concorrência de 20 execuções não altera a latência medida | Permitir concorrência entre execuções no experimento principal |
 | 3 | Métricas estáveis a partir de 1000 mensagens | Usar 1000 mensagens por execução |
 | 4 | Com E=3 ou E=5, `MAX_BACKOFF`=30s não tem efeito | Rever `MAX_BACKOFF` (ex.: 4s ou 8s) ou registrar que só atua com E=10 |
 | 5 | Com 20 msgs/s, o consumer fica sempre saturado | Recalibrar os níveis do Fator D antes da triagem, ou registrar que o sistema opera saturado |

@@ -30,8 +30,7 @@ atingido na 5ª retentativa do exponencial, respondendo à conclusão 4 do pilot
 
 ## Configuração
 
-Todas as execuções: 1000 mensagens (`tasks.json` deste diretório), B=50%, 20 execuções em
-paralelo, `PRODUCER_RATE` = 100 msgs/s com chegadas Poisson (acima da capacidade de todas
+Todas as execuções: 1000 mensagens (`tasks.json` deste diretório), B=50%, 20 execuções concorrentes, `PRODUCER_RATE` = 100 msgs/s com chegadas Poisson (acima da capacidade de todas
 as estratégias, de propósito).
 
 **Parte A** (`plan_a_escala.json`): as 4 combinações do piloto 01 (retry imediato e
@@ -60,9 +59,9 @@ A partir da raiz do repositório, com o RabbitMQ rodando:
 ```bash
 P=pilots/02_escala_e_capacidade
 export TASKS_FILE=$P/tasks.json
-go run ./cmd/orchestrator -plan $P/plan_a_escala.json -parallel 20 \
+go run ./cmd/orchestrator -plan $P/plan_a_escala.json -concurrency 20 \
   -metrics-dir $P/results_a -drain-timeout 1h
-go run ./cmd/orchestrator -plan $P/plan_b_capacidade.json -parallel 20 \
+go run ./cmd/orchestrator -plan $P/plan_b_capacidade.json -concurrency 20 \
   -metrics-dir $P/results_b -drain-timeout 1h
 
 # comparação da parte A com o piloto 01 (N=1000)
@@ -140,7 +139,7 @@ o teto. O AIMD não sofre disso porque reduz o delay pela metade a cada sucesso.
 
 ### Estimativa de tempo do experimento principal
 
-36 combinações × 30 repetições, 1000 mensagens, 20 execuções em paralelo. Duração de cada
+36 combinações × 30 repetições, 1000 mensagens, 20 execuções concorrentes. Duração de cada
 execução ≈ 1000 / min(taxa de chegada, vazão da estratégia). Usa a vazão do pior caso
 (B=50%, E=10) para os três níveis de B, então é um limite superior.
 

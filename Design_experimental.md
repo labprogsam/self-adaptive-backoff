@@ -149,13 +149,18 @@ escala.
 | `Qos` (prefetch) | 1 | Fora do escopo do estudo; com uma mensagem por vez, a ordem das observações que alimentam o AIMD e o HPA é determinística. | — |
 | Instâncias do consumidor | 1 | Fora do escopo do estudo. | — |
 | Requeue em falha definitiva | `nack` sem requeue | Evita que uma mensagem que sempre falha trave a fila. | — |
-| AIMD: Δ+ e ×f | 100ms e ×0,5 | O delay de equilíbrio é `d* = p·Δ/((1−p)·(1−f))` para taxa de erro p; com esses valores, o AIMD fica na mesma ordem de grandeza de espera do exponencial em todas as condições. | piloto 03 |
+| AIMD: Δ+ e ×f | 100ms e ×0,5 | Com esses valores, o AIMD fica na mesma ordem de grandeza de espera do exponencial em todas as condições. | piloto 03 |
 | HPA: *setpoint* e janela | 50% e 50 tentativas | Com taxa de erro independente do delay (padrão uniforme), o HPA não tem equilíbrio: o delay vai ao teto se B > *setpoint* e ao piso se B < *setpoint*. O *setpoint* de 50% é o que menos prende o HPA no teto entre os valores testados (1 de 6 condições); a janela de 50 é a mais estável quando B = *setpoint*. | piloto 03 |
 | **D — Taxa de produção** | 2,5 msgs/s, chegadas Poisson | Ver justificativa abaixo. | pilotos 01 e 02 |
 | Volume por execução | 1.000 mensagens | As médias de todas as métricas ficam dentro do IC95% (ou a até 2%) do valor com 3.000 mensagens. | piloto 01 |
 | Payload | JSON de ~100 bytes, fixo | Nem o consumidor nem a API simulada validam o conteúdo além de ser um objeto JSON; o tamanho não influencia o que é medido. | — |
 | Tempo de resposta da API | 10ms + variação uniforme de 0 a 4ms | Latência local estável (50ms + até 20ms na escala de referência). | — |
 | Janelas de indisponibilidade | 2s saudável + 2s fora do ar | Cada execução cobre dezenas de ciclos completos de falha. | pilotos 01 e 02 |
+
+Os parâmetros do AIMD e do HPA foram calibrados para um custo de espera comparável ao das
+estratégias estáticas, e não otimizados para a maior taxa de sucesso: no piloto 03, havia
+configurações com mais sucesso na indisponibilidade, mas com 2 a 4 vezes mais espera. Assim,
+nenhuma estratégia recebe vantagem de calibração sobre as demais.
 
 ### 5.3 Justificativas
 
@@ -196,6 +201,13 @@ mensagens** (o delay atual não é recalculado do zero a cada mensagem, mas ajus
 incrementalmente pelo histórico observado). AIMD e o algoritmo do HPA foram escolhidos por
 serem instâncias simples e bem definidas de duas famílias distintas de controle por
 realimentação.
+
+O HPA pressupõe que o delay influencia a taxa de erro observada. Essa premissa vale no padrão
+de indisponibilidade, em que esperar desloca a tentativa para depois da janela de falha, mas
+não no uniforme, em que as falhas independem do delay e o HPA vai ao teto ou ao piso
+conforme B seja maior ou menor que o *setpoint*. A API simulada não modela falhas
+dependentes da carga (ex.: sobrecarga ou limite de taxa), cenário que mais motiva estratégias
+por realimentação; por isso, as conclusões sobre o AIMD e o HPA não se estendem a esse caso.
 
 ---
 
@@ -265,7 +277,7 @@ parâmetros nos valores da Seção 5.2.
   tempo/ambiente. A semente e a ordem usada são registradas.
 - **Isolamento:** cada execução parte de uma instância nova do simulador de API, do
   consumidor e do produtor, com porta, fila e arquivos próprios; a fila é esvaziada antes e
-  apagada depois de cada execução. Até 20 execuções rodam em paralelo; dentro de uma
+  apagada depois de cada execução. Até 20 execuções rodam concorrentemente; dentro de uma
   execução, o processamento é sequencial (`Qos(1)`).
 - **Controles:** hardware, versão do Go e rede fixos entre execuções.
 - **Saída:** dois níveis de registro (CSV), ligados por `run_id`:

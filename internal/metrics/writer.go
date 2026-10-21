@@ -44,7 +44,7 @@ type AttemptRecord struct {
 // Writer grava AttemptRecord em um arquivo CSV, criando o diretório e o
 // cabeçalho se o arquivo ainda não existir. Safe para uso concorrente,
 // embora o consumidor atual (Qos=1, um único goroutine de processamento)
-// não precise disso hoje — mantido por segurança caso o paralelismo mude.
+// não precise disso hoje — mantido por segurança caso a concorrência mude.
 type Writer struct {
 	mu   sync.Mutex
 	file *os.File

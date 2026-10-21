@@ -20,7 +20,7 @@ import (
 // Config controla uma rodada de orquestração.
 type Config struct {
 	PlanPath    string
-	Parallelism int
+	Concurrency int
 	BinDir      string
 	MetricsDir  string
 	// LogDir é onde fica a saída de cada processo filho; vazio desativa os logs.
@@ -37,8 +37,8 @@ type Config struct {
 }
 
 func Run(cfg Config) error {
-	if cfg.Parallelism <= 0 {
-		return fmt.Errorf("parallelism deve ser > 0")
+	if cfg.Concurrency <= 0 {
+		return fmt.Errorf("concurrency deve ser > 0")
 	}
 
 	plan, err := LoadPlan(cfg.PlanPath)
@@ -80,8 +80,8 @@ func Run(cfg Config) error {
 		return err
 	}
 
-	log.Printf("orquestrador: %d execuções (%d rodadas × %d repetições), paralelismo=%d",
-		len(executions), len(plan.Rounds), plan.Repetitions, cfg.Parallelism)
+	log.Printf("orquestrador: %d execuções (%d rodadas × %d repetições), concorrência=%d",
+		len(executions), len(plan.Rounds), plan.Repetitions, cfg.Concurrency)
 
 	summary, err := newCSVWriter(filepath.Join(cfg.MetricsDir, "runs_summary.csv"), summaryHeader)
 	if err != nil {
@@ -94,7 +94,7 @@ func Run(cfg Config) error {
 	}
 	defer windows.close()
 
-	sem := make(chan struct{}, cfg.Parallelism)
+	sem := make(chan struct{}, cfg.Concurrency)
 	var wg sync.WaitGroup
 
 	for _, ex := range executions {

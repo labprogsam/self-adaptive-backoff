@@ -36,7 +36,7 @@ mkdir -p $P
 cp tasks.json $P/tasks.json
 # 3. rode gravando direto em $P/results
 TASKS_FILE=$P/tasks.json go run ./cmd/orchestrator -plan $P/plan.json \
-  -parallel 20 -metrics-dir $P/results -drain-timeout 3h
+  -concurrency 20 -metrics-dir $P/results -drain-timeout 3h
 # 4. escreva $P/README.md e adicione uma linha na tabela acima
 ```
 

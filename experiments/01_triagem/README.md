@@ -1,6 +1,5 @@
 # Triagem (fase 1) — efeito do Fator E
 
-- **Data de execução:** 2026-10-18 (17:39 → 19:05, horário de Brasília)
 - **Etapa do design experimental:** fase 1, triagem (Seção 8)
 - **Pergunta:** o número máximo de tentativas extras (Fator E) e suas interações têm efeito
   relevante sobre as métricas? Se não, E é fixado em 5 no experimento principal.
@@ -9,7 +8,7 @@
 
 Fatorial completo **A × B × C × E**: 6 × 3 × 2 × 3 = 108 combinações × 3 repetições = 324
 execuções, 500 mensagens cada (`tasks.json` deste diretório), em ordem embaralhada (seed
-`1792355972321381106`, em `results/execution_order.csv`), 20 execuções em paralelo.
+`1792355972321381106`, em `results/execution_order.csv`), 20 execuções concorrentes.
 
 | Fator | Níveis |
 |---|---|
@@ -21,8 +20,9 @@ execuções, 500 mensagens cada (`tasks.json` deste diretório), em ordem embara
 Demais parâmetros nos defaults calibrados (escala 1/5, pilotos 02 e 03); Fator D fixado em
 2,5 msgs/s.
 
-**Critério (Seção 8):** se E + A×E explicam menos de 5% da variação em todas as métricas,
-E é fixado em 5; caso contrário, a escolha de E é reavaliada com os dados da triagem.
+**Critério (Seção 8):** medir quanto das diferenças entre os resultados vem do número de
+tentativas (E), sozinho ou combinado com a estratégia. Se fosse menos de 5% em todas as
+métricas, E teria pouca influência e seria fixado em 5.
 
 ## Arquivos
 
@@ -43,7 +43,7 @@ E é fixado em 5; caso contrário, a escolha de E é reavaliada com os dados da 
 ```bash
 T=experiments/01_triagem
 python3 $T/gen_plan.py
-TASKS_FILE=$T/tasks.json go run ./cmd/orchestrator -plan $T/plan.json -parallel 20 \
+TASKS_FILE=$T/tasks.json go run ./cmd/orchestrator -plan $T/plan.json -concurrency 20 \
   -metrics-dir $T/results -drain-timeout 1h -seed 1792355972321381106
 python3 $T/analyze.py --out $T/results/alocacao_variacao.csv
 ```
@@ -53,11 +53,33 @@ python3 $T/analyze.py --out $T/results/alocacao_variacao.csv
 Todas as 324 execuções terminaram com `status=ok`; desenho balanceado (108/108 combinações,
 3 repetições cada).
 
-### Alocação de variação
+### Por que E não foi fixado
 
-Porcentagem da variação total explicada por cada efeito. A taxa de sucesso e o percentual
-de descarte são complementares e têm a mesma alocação; tentativas por mensagem e chamadas
-à API por mensagem são iguais (não há erro de dado).
+**Resumo:** o número de tentativas muda qual estratégia se sai melhor. Se E fosse fixado, a
+conclusão do estudo dependeria do valor escolhido.
+
+Separamos as diferenças entre os resultados de acordo com a causa: a estratégia, a taxa de
+erro, o padrão de falha, o número de tentativas e as combinações entre eles. A parte que vem
+do número de tentativas (sozinho ou combinado com a estratégia) foi:
+
+| Métrica | Parte que vem de E | Limite |
+|---|---|---|
+| Taxa de sucesso | 8,5% | 5% |
+| Tentativas por mensagem | 10,4% | 5% |
+| Espera de backoff por mensagem | 1,9% | 5% |
+
+Em duas das três métricas, o efeito passou do limite, então E não foi fixado.
+
+A variação entre repetições da mesma combinação foi muito pequena (menos de 1% do total):
+quase toda a diferença nos resultados vem dos fatores, não do acaso.
+
+<details>
+<summary>Tabela completa: quanto cada fator e cada combinação explica</summary>
+
+Porcentagem da variação total explicada por cada fator e combinação de fatores ("A×E" é a
+combinação entre estratégia e número de tentativas, e assim por diante). A taxa de sucesso e
+o descarte são complementares e têm os mesmos valores; tentativas e chamadas à API por
+mensagem também são iguais.
 
 | Efeito | Taxa de sucesso | Espera de backoff por msg | Tentativas por msg |
 |---|---|---|---|
@@ -76,21 +98,9 @@ de descarte são complementares e têm a mesma alocação; tentativas por mensag
 | A×C×E | 1,38% | 0,42% | 7,44% |
 | B×C×E | 0,02% | 0,56% | 0,05% |
 | A×B×C×E | 0,03% | 0,49% | 0,07% |
-| erro | 0,23% | 0,59% | 0,21% |
+| erro (variação entre repetições) | 0,23% | 0,59% | 0,21% |
 
-Aplicação do critério:
-
-| Métrica | E + A×E | Todos os termos com E |
-|---|---|---|
-| Taxa de sucesso | **8,54%** | 14,86% |
-| Espera de backoff por msg | 1,87% | 5,66% |
-| Tentativas por msg | **10,35%** | 20,44% |
-
-**O critério não foi atendido**: E tem efeito relevante na taxa de sucesso e nas tentativas
-por mensagem.
-
-O erro experimental (variação entre repetições) explica só 0,2%–0,6% da variação: as
-diferenças entre combinações são muito maiores que o ruído entre execuções.
+</details>
 
 ### Onde o efeito de E aparece
 
@@ -156,7 +166,7 @@ taxa de sucesso (usando o percentil 90 do desvio):
 
 ### Tempo estimado do experimento principal
 
-1000 mensagens por execução (duração da triagem × 2), 20 execuções em paralelo:
+1000 mensagens por execução (duração da triagem × 2), 20 execuções concorrentes:
 
 | Opção | n=10 | n=15 | n=20 | n=30 |
 |---|---|---|---|---|
@@ -169,6 +179,6 @@ taxa de sucesso (usando o percentil 90 do desvio):
 
 | # | Conclusão | Decisão |
 |---|---|---|
-| 1 | E + A×E explicam 8,5% (sucesso) e 10,4% (tentativas) da variação, acima do limite de 5% | Critério não atendido: E não pode ser fixado sem justificativa adicional |
-| 2 | O efeito de E se concentra na indisponibilidade, onde muda a ordem entre as estratégias | E passa a ser fator do experimento principal: fatorial completo A × B × C × E (108 combinações), com os níveis 3, 5 e 10 |
-| 3 | O erro experimental é muito pequeno (0,2%–0,6% da variação) | 10 repetições por combinação no experimento principal (IC95% esperado de ±1,05 p.p. na taxa de sucesso, percentil 90), ~7,2h no total |
+| 1 | O número de tentativas pesa mais que o limite de 5% na taxa de sucesso (8,5%) e nas tentativas por mensagem (10,4%) | E não é fixado |
+| 2 | Na indisponibilidade, o número de tentativas muda qual estratégia é a melhor | E é variado no experimento principal, com os níveis 3, 5 e 10 (108 combinações) |
+| 3 | Repetições da mesma combinação dão resultados muito parecidos | 10 repetições por combinação bastam (~7,2h no total) |

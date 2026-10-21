@@ -58,7 +58,7 @@ A partir da raiz do repositório, com o RabbitMQ rodando:
 ```bash
 P=pilots/03_calibracao_aimd_hpa
 python3 $P/gen_plan.py
-TASKS_FILE=$P/tasks.json go run ./cmd/orchestrator -plan $P/plan.json -parallel 20 \
+TASKS_FILE=$P/tasks.json go run ./cmd/orchestrator -plan $P/plan.json -concurrency 20 \
   -metrics-dir $P/results -drain-timeout 1h -seed 1792037885401100362
 python3 $P/analyze.py --out $P/results/resumo.csv
 ```
@@ -168,7 +168,7 @@ e 5 com setpoint 10%.
 ### Estimativa de tempo do experimento principal
 
 36 combinações × 30 repetições, 1000 mensagens, E=5, taxa de chegada de 2,5 msgs/s, 20
-execuções em paralelo. Duração de cada execução ≈ 1000 / vazão medida neste piloto para a
+execuções concorrentes. Duração de cada execução ≈ 1000 / vazão medida neste piloto para a
 mesma condição. Retry imediato e fixo assumidos limitados pela taxa de chegada (capacidade
 bem acima de 2,5 msgs/s no piloto 02); exponencial com jitter assumido igual ao exponencial,
 exceto em B=50% com indisponibilidade (×0,76, proporção do piloto 02).

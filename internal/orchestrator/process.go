@@ -88,7 +88,7 @@ type process struct {
 }
 
 // startProcess inicia bin com env. Se logDir não for vazio, redireciona
-// stdout+stderr para <logDir>/<name>.log (com paralelismo > 1, várias
+// stdout+stderr para <logDir>/<name>.log (com concorrência > 1, várias
 // execuções escrevem ao mesmo tempo — misturar tudo no terminal seria
 // ilegível); se for vazio, a saída do processo é descartada.
 func startProcess(bin, logDir, name string, env []string) (*process, error) {

@@ -34,7 +34,7 @@ https://excalidraw.com/#json=VpGgq4FiHOlLCOuhQ3M6t,BSBUnwGBCuWeysPIMm8DvQ
 - **orchestrator** (`cmd/orchestrator`) — roda um plano de experimento (várias
   combinações de fatores × repetições) automaticamente: cada rodada é uma
   execução isolada e sequencial de apisim+consumer+producer (fila, porta e
-  arquivo de métricas próprios), rodando em paralelo com as demais rodadas
+  arquivo de métricas próprios), rodando concorrentemente com as demais rodadas
   até um limite configurável — a concorrência fica **entre** rodadas, nunca
   dentro de uma rodada (que continua sequencial, preservando `Qos(1)` e o
   estado entre mensagens do AIMD/HPA).
@@ -55,7 +55,7 @@ internal/
   producer/     # leitura de tasks.json e publicação na fila, com controle de taxa
   apisim/       # lógica do simulador de API (injeção de falha e latência)
   metrics/      # writer CSV do schema "por tentativa" (Design_experimental.md, Seção 8)
-  orchestrator/ # execução paralela de rodadas isoladas a partir de um plano (JSON)
+  orchestrator/ # execução concorrente de rodadas isoladas a partir de um plano (JSON)
 experiments/
   example_plan.json # plano de exemplo (template, não é a triagem/design final)
   gen_tasks.py      # gera tasks.json (semente fixa: sempre o mesmo conteúdo)
@@ -203,11 +203,11 @@ Repita trocando `BACKOFF_STRATEGY`/`APISIM_*`/`RUN_ID` para cobrir as demais
 combinações dos Fatores A, B e C (Seção 8 do design experimental) — ou use o
 orquestrador (próxima seção) para automatizar isso.
 
-## Orquestrador: rodando várias combinações em paralelo
+## Orquestrador: rodando várias combinações concorrentemente
 
 Rodar as 36 combinações × 30 repetições (Seção 8) uma de cada vez, manualmente,
 é inviável em tempo. O orquestrador roda um **plano** (arquivo JSON: rodadas ×
-repetições) automaticamente, com paralelismo limitado **entre rodadas** — cada
+repetições) automaticamente, com concorrência limitada **entre rodadas** — cada
 rodada continua sequencial por dentro (preserva `Qos(1)` e o estado
 compartilhado do AIMD/HPA; ver a discussão sobre concorrência registrada nesta
 conversa/commits). Cada rodada roda isolada: porta de `apisim`, fila do
@@ -216,7 +216,7 @@ RabbitMQ e arquivo de métricas próprios, alocados automaticamente.
 ```bash
 go run ./cmd/orchestrator \
   -plan experiments/example_plan.json \
-  -parallel 4 \
+  -concurrency 4 \
   -drain-timeout 20m
 ```
 

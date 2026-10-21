@@ -22,8 +22,8 @@
   <rect width="1800" height="1210" fill="#ffffff"/>
 
   <!-- Título -->
-  <text x="40" y="48" class="titulo">Orquestrador: execuções isoladas, até 20 em paralelo</text>
-  <text x="40" y="76" class="subtitulo">Paralelismo só entre execuções; dentro de cada execução, um consumer processa uma mensagem por vez (Qos 1)</text>
+  <text x="40" y="48" class="titulo">Orquestrador: execuções isoladas, até 20 concorrentes</text>
+  <text x="40" y="76" class="subtitulo">Concorrência só entre execuções; dentro de cada execução, um consumer processa uma mensagem por vez (Qos 1)</text>
 
   <!-- Linha 1: do plano à fila de execuções pendentes -->
   <rect x="40" y="100" width="330" height="110" rx="10" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.5"/>
@@ -65,7 +65,7 @@
 
   <!-- Orquestrador -->
   <rect x="40" y="264" width="1320" height="636" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
-  <text x="60" y="294" class="h">Orquestrador — pool de 20 vagas (-parallel 20)</text>
+  <text x="60" y="294" class="h">Orquestrador — pool de 20 vagas (-concurrency 20)</text>
   <text x="60" y="316" class="p">Um semáforo limita a 20 execuções simultâneas. Cada vaga roda uma execução do início ao fim e, ao terminar, libera a vaga para a próxima.</text>
 
   <!-- Vaga 1 (detalhada) -->

@@ -26,7 +26,7 @@ internal/consumer/          # loop RabbitMQ (Qos=1), reconexão, ack/nack, grava
 internal/producer/          # leitura de tasks.json, controle de taxa (Poisson/constante)
 internal/apisim/            # injeção de falha (Fator B/C) e latência configuráveis
 internal/metrics/           # writer do CSV "por tentativa" (Seção 8 do design experimental)
-internal/orchestrator/      # roda um plano (JSON) de rodadas × repetições, paralelo entre rodadas
+internal/orchestrator/      # roda um plano (JSON) de rodadas × repetições, concorrente entre rodadas
 experiments/example_plan.json # plano de exemplo do orquestrador (template, não é o plano real)
 experiments/gen_tasks.py    # gera tasks.json (semente fixa, saída idêntica a cada execução)
 experiments/prefix_analysis.py # métricas da Seção 3 recalculadas por prefixo de N mensagens (piloto, Seção 7)
@@ -94,17 +94,17 @@ métricas).
   Cada rodada (`internal/orchestrator/orchestrator.go`, `runExecution`) continua
   sequencial por dentro — um `apisim` + um `consumer` processando uma mensagem por vez,
   exatamente como rodar manualmente. Isso não é um detalhe de implementação incidental: é
-  uma decisão deliberada, porque paralelizar dentro de uma rodada quebraria `Qos(1)` (fora
+  uma decisão deliberada, porque processar mensagens concorrentemente dentro de uma rodada quebraria `Qos(1)` (fora
   do escopo do estudo) e tornaria não-determinística a ordem de `Observe` no AIMD/HPA — o
   que afetaria as duas estratégias com estado de um jeito que não afeta as estratégias
   estáticas, introduzindo um viés de medição assimétrico entre os níveis do Fator A que
   são exatamente o que se quer comparar. Não "otimize" isso para rodar várias mensagens da
-  mesma rodada em paralelo.
-- **Isolamento entre rodadas paralelas é por fila, porta e arquivo, nunca por processo
+  mesma rodada concorrentemente.
+- **Isolamento entre rodadas concorrentes é por fila, porta e arquivo, nunca por processo
   compartilhado.** Cada `Execution` recebe seu próprio nome de fila RabbitMQ
   (`tasks_<run_id>`), sua própria porta de `apisim` (alocada dinamicamente,
   `internal/orchestrator/process.go:freePort`) e seu próprio `METRICS_FILE`. Um único
-  broker RabbitMQ é compartilhado entre rodadas paralelas (filas diferentes, mesma
+  broker RabbitMQ é compartilhado entre rodadas concorrentes (filas diferentes, mesma
   conexão/broker) — isso é intencional, não suba um broker por rodada.
 - **Nenhum resto entre execuções:** a fila `tasks_<run_id>` é apagada antes de cada
   execução começar (com qualquer mensagem que tenha sobrado de uma execução anterior com o
@@ -137,7 +137,7 @@ README. Cada tentativa processada vira uma linha em `METRICS_FILE` (padrão
 Para rodar várias combinações automaticamente (em vez de um terminal por processo):
 
 ```bash
-go run ./cmd/orchestrator -plan experiments/example_plan.json -parallel 4
+go run ./cmd/orchestrator -plan experiments/example_plan.json -concurrency 4
 ```
 
 ## Tarefas comuns neste projeto
@@ -235,7 +235,7 @@ Falta:
   no regime não saturado. Criar como `experiments/02_ensaio_geral/`, seguindo a estrutura da
   triagem.
 - **Experimento principal (fase 2)** — fatorial completo A × B × C × E (108 combinações),
-  10 repetições, 1.000 mensagens por execução (~7,2h com `-parallel 20`), em
+  10 repetições, 1.000 mensagens por execução (~7,2h com `-concurrency 20`), em
   `experiments/03_experimento_principal/`. Manter a máquina sem suspender durante a execução:
   com o WSL desligado, nada roda.
 - **Análise (Seção 9)** — scripts de agregação sobre os dados do experimento principal:

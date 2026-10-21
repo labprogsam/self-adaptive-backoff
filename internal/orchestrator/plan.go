@@ -1,5 +1,5 @@
 // Package orchestrator roda rodadas completas do experimento (apisim +
-// consumer + producer, cada uma isolada) com paralelismo limitado — a
+// consumer + producer, cada uma isolada) com concorrência limitada — a
 // concorrência fica entre rodadas, nunca dentro de uma rodada (que continua
 // sequencial, preservando Qos=1 e o estado compartilhado entre mensagens das
 // estratégias adaptativas; ver Design_experimental.md, Seção 5.2).

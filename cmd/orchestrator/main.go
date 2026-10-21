@@ -1,7 +1,7 @@
 // Command orchestrator roda um plano de experimento (internal/orchestrator):
 // várias rodadas (combinações de fatores × repetições), cada uma uma
-// execução isolada e sequencial de apisim+consumer+producer, com paralelismo
-// limitado entre rodadas. Deve ser rodado a partir da raiz do repositório
+// execução isolada e sequencial de apisim+consumer+producer, com concorrência
+// limitada entre rodadas. Deve ser rodado a partir da raiz do repositório
 // (precisa compilar cmd/consumer, cmd/producer e cmd/apisim).
 package main
 
@@ -15,7 +15,7 @@ import (
 
 func main() {
 	plan := flag.String("plan", "", "caminho do arquivo de plano (JSON)")
-	parallel := flag.Int("parallel", 4, "número de rodadas executadas simultaneamente")
+	concurrency := flag.Int("concurrency", 4, "número de execuções concorrentes (executadas ao mesmo tempo)")
 	binDir := flag.String("bin-dir", "bin", "diretório onde os binários (consumer/producer/apisim) são compilados")
 	metricsDir := flag.String("metrics-dir", "metrics", "diretório de saída dos CSVs de métricas e do resumo")
 	logDir := flag.String("log-dir", "", "diretório de saída dos logs de cada processo (vazio = sem logs)")
@@ -30,12 +30,12 @@ func main() {
 	}
 
 	if *plan == "" {
-		log.Fatal("uso: orchestrator -plan caminho/para/plano.json [-parallel N] [-drain-timeout 20m]")
+		log.Fatal("uso: orchestrator -plan caminho/para/plano.json [-concurrency N] [-drain-timeout 20m]")
 	}
 
 	cfg := orchestrator.Config{
 		PlanPath:     *plan,
-		Parallelism:  *parallel,
+		Concurrency:  *concurrency,
 		BinDir:       *binDir,
 		MetricsDir:   *metricsDir,
 		LogDir:       *logDir,

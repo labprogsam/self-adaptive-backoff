@@ -3,7 +3,7 @@ O orchestrator é o "maestro" dos experimentos. Ele lê um plano, monta cada exe
 O que cada parte faz
 
 cmd/orchestrator/main.go: a porta de entrada.
-Recebe as opções da linha de comando: qual plano usar, quantas execuções rodar ao mesmo tempo (-parallel), onde salvar métricas e logs e quanto tempo esperar no máximo por execução (-drain-timeout). Depois passa tudo para o orquestrador.
+Recebe as opções da linha de comando: qual plano usar, quantas execuções rodar ao mesmo tempo (-concurrency), onde salvar métricas e logs e quanto tempo esperar no máximo por execução (-drain-timeout). Depois passa tudo para o orquestrador.
 
 plan.go: o plano do experimento.
 - Plan: o arquivo JSON com as combinações de fatores (as "rodadas"), quantas repetições cada uma terá e as configurações comuns a todas.
@@ -35,9 +35,9 @@ Lê periodicamente o CSV de métricas e conta quantas mensagens já têm um resu
 summary.go: o caderno de anotações.
 Grava uma linha por execução em runs_summary.csv, com status (ok, timeout ou error), início, fim e duração. Uma trava garante que duas execuções nunca escrevam ao mesmo tempo, o que embaralharia o arquivo.
 
-Como o paralelismo não contamina os resultados
+Como a concorrência não contamina os resultados
 
-A ideia central é que o paralelismo acontece entre execuções, nunca dentro de uma. Cada execução continua processando uma mensagem por vez, como o design experimental exige. As estratégias adaptativas aprendem com as mensagens anteriores, e intercalar mensagens de outra execução estragaria esse aprendizado.
+A ideia central é que a concorrência acontece entre execuções, nunca dentro de uma. Cada execução continua processando uma mensagem por vez, como o design experimental exige. As estratégias adaptativas aprendem com as mensagens anteriores, e intercalar mensagens de outra execução estragaria esse aprendizado.
 
 Cada execução tem o seu próprio "mundo", separado das outras:
 
@@ -60,7 +60,7 @@ Cada execução tem o seu próprio "mundo", separado das outras:
 │ Resumo            │ Arquivo único, mas protegido pela trava.                                        │
 └───────────────────┴─────────────────────────────────────────────────────────────────────────────────┘
 
-Na prática, rodar 4 execuções em paralelo é como ter 4 laboratórios completos lado a lado, cada um com sua API, sua fila e seu caderno. Isso vale até para a porta da API: ela só é liberada no último instante antes de o apisim subir, para que outra execução não a "roube" nesse meio-tempo.
+Na prática, rodar 4 execuções concorrentes é como ter 4 laboratórios completos lado a lado, cada um com sua API, sua fila e seu caderno. Isso vale até para a porta da API: ela só é liberada no último instante antes de o apisim subir, para que outra execução não a "roube" nesse meio-tempo.
 
 O que o isolamento não cobre
 
@@ -68,4 +68,4 @@ O isolamento é lógico, não físico. Todas as execuções dividem:
 - a mesma máquina (CPU, memória, disco);
 - o mesmo servidor RabbitMQ, com filas separadas mas o mesmo broker.
 
-Se você colocar paralelismo demais para a máquina, as execuções disputam recursos. Contagens como tentativas, sucessos e desistências provavelmente não mudam. Já métricas de tempo (latência, tempo até concluir) podem sair infladas.
+Se você colocar concorrência demais para a máquina, as execuções disputam recursos. Contagens como tentativas, sucessos e desistências provavelmente não mudam. Já métricas de tempo (latência, tempo até concluir) podem sair infladas.
