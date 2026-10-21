@@ -1,10 +1,9 @@
 # Piloto 03 — calibração do AIMD e do HPA
 
-- **Data de execução:** 2026-10-15 (01:18 → 03:00, horário de Brasília)
-- **Etapa do design experimental:** calibração (Seção 7.3)
+- **Etapa do design experimental:** calibração (Seção 7)
 - **Motivação:** no piloto 02, o HPA com `HPA_SETPOINT` = 5% ficou no teto de delay em 98%
   das esperas e dominou o tempo total do experimento; o AIMD com os parâmetros padrão ficou
-  muito mais barato que as demais estratégias. A Seção 7.3 pede que os parâmetros do AIMD
+  muito mais barato que as demais estratégias. A Seção 7 pede que os parâmetros do AIMD
   (Δ+, ×decremento) e do HPA (setpoint, janela observável) produzam delays na mesma ordem de
   grandeza das demais estratégias.
 - **Pergunta:** quais valores de Δ e f (AIMD) e de setpoint e janela (HPA) produzem delays
@@ -161,7 +160,7 @@ ela cobre ~11–20s de execução (2,5–5 tentativas/s), ou seja, vários ciclo
 indisponibilidade de 4s: o HPA reage à taxa média de erro, não a cada indisponibilidade
 individual. Com janela de 10, ele acompanha cada ciclo, mas fica instável.
 
-Nenhum setpoint atende ao critério da Seção 7.3 em todas as condições, por causa da ausência
+Nenhum setpoint atende ao critério da Seção 7 em todas as condições, por causa da ausência
 de equilíbrio no padrão uniforme. O setpoint de 50% é o que mais se aproxima: o HPA só fica
 preso no teto em uma das 6 condições (B=50% com indisponibilidade), contra 3 com setpoint 30%
 e 5 com setpoint 10%.
@@ -199,7 +198,7 @@ total muda se a triagem escolher outro nível de E.
   estratégias.
 - Só E=5. Com E=10, as estratégias que saturam levam mais tempo.
 - Setpoints e janelas fora da grade (ex.: setpoint 40%) não foram testados.
-- O critério "mesma ordem de grandeza" da Seção 7.3 não é atingível para o HPA em todas as
+- O critério "mesma ordem de grandeza" da Seção 7 não é atingível para o HPA em todas as
   condições, por razão estrutural (conclusão 3). A escolha do setpoint 50% minimiza as
   condições em que ele fica preso no teto, mas faz o HPA quase não esperar no padrão
   uniforme com B ≤ 30%.

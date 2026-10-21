@@ -1,7 +1,6 @@
 # Piloto 02 — escala de tempo 1/5 e capacidade das estratégias
 
-- **Data de execução:** 2026-10-15 (00:06 → 01:10, horário de Brasília)
-- **Etapa do design experimental:** calibração (Seção 7.3)
+- **Etapa do design experimental:** calibração (Seção 7)
 - **Motivação:** o piloto 01 mostrou que, com 20 msgs/s, o consumer opera sempre saturado, e
   que reduzir a taxa do producer com as constantes de tempo atuais tornaria o experimento
   principal longo demais (~30h). A alternativa é encolher todas as constantes de tempo na

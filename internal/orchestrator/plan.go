@@ -2,7 +2,7 @@
 // consumer + producer, cada uma isolada) com paralelismo limitado — a
 // concorrência fica entre rodadas, nunca dentro de uma rodada (que continua
 // sequencial, preservando Qos=1 e o estado compartilhado entre mensagens das
-// estratégias adaptativas; ver Design_experimental.md, Seção 1.3 e 5).
+// estratégias adaptativas; ver Design_experimental.md, Seção 5.2).
 package orchestrator
 
 import (
@@ -14,7 +14,7 @@ import (
 
 // Plan descreve o conjunto de rodadas a executar. Cada combinação de fatores
 // vira um Round; Repetitions é o número de execuções independentes por
-// combinação (n, Seção 8.2 do design experimental).
+// combinação (n, Seção 8 do design experimental).
 type Plan struct {
 	Repetitions int               `json:"repetitions"`
 	SharedEnv   map[string]string `json:"shared_env"`
@@ -75,7 +75,7 @@ type Execution struct {
 }
 
 // Expand gera todas as execuções (rodada × repetição) do plano, na ordem em
-// que aparecem — a aleatorização da ordem de execução (Seção 8.2) é feita
+// que aparecem — a aleatorização da ordem de execução (Seção 8) é feita
 // depois, por Shuffle.
 func Expand(p Plan) []Execution {
 	executions := make([]Execution, 0, len(p.Rounds)*p.Repetitions)
@@ -95,7 +95,7 @@ func Expand(p Plan) []Execution {
 }
 
 // Shuffle embaralha a ordem das execuções com uma semente explícita: a ordem
-// aleatorizada entre combinações exigida pela Seção 8.2 do design
+// aleatorizada entre combinações exigida pela Seção 8 do design
 // experimental, para não confundir efeito de fator com efeito de
 // tempo/ambiente. A mesma semente sempre produz a mesma ordem, o que permite
 // registrar e reproduzir a ordem usada em cada experimento.

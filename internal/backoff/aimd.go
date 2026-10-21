@@ -9,7 +9,7 @@ import (
 // Decrease. Diferente das estratégias estáticas, mantém um delay que
 // persiste **entre mensagens** — cresce aditivamente a cada tentativa que
 // falha e cai multiplicativamente a cada tentativa com sucesso
-// (Design_experimental.md, Seção 4.1 e nota da Seção 5).
+// (Design_experimental.md, Seção 4.1 e nota da Seção 5.3).
 type AIMD struct {
 	mu sync.Mutex
 

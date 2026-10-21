@@ -1,6 +1,6 @@
 # Piloto 01 — piloto inicial (volume de mensagens e valores de referência)
 
-- **Etapa do design experimental:** calibração (Seção 7.3)
+- **Etapa do design experimental:** calibração (Seção 7)
 - **Pergunta principal:** quantas mensagens por execução bastam para métricas estáveis?
 - **Perguntas secundárias:** o simulador gera as falhas configuradas? Executar rodadas em
   paralelo distorce as medições? Os valores de referência (`MAX_BACKOFF`, taxa do producer,

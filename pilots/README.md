@@ -1,7 +1,7 @@
 # Pilotos
 
 Execuções piloto usadas para calibrar e justificar os valores de referência do experimento
-(Design_experimental.md, Seção 7.3). Cada piloto fica num diretório próprio e guarda tudo o
+(Design_experimental.md, Seção 7). Cada piloto fica num diretório próprio e guarda tudo o
 que é necessário para servir de evidência: o plano executado, a carga usada, os dados brutos
 e o relatório com resultados e decisões.
 

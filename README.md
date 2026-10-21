@@ -20,7 +20,7 @@ https://excalidraw.com/#json=VpGgq4FiHOlLCOuhQ3M6t,BSBUnwGBCuWeysPIMm8DvQ
 
 - **Producer** — publica na fila do RabbitMQ as mensagens de `tasks.json`
   (1000 pedidos de ~100 bytes, fixos entre execuções), numa taxa configurável
-  (Seção 7.1 do design experimental).
+  (Seção 7 do design experimental).
 - **Broker (RabbitMQ)** — fila que desacopla producer e consumer.
 - **Consumer** — consome uma mensagem por vez (`Qos(1)`), delega o envio ao
   `apiclient` + `backoff`, grava um registro por tentativa em CSV e decide
@@ -30,7 +30,7 @@ https://excalidraw.com/#json=VpGgq4FiHOlLCOuhQ3M6t,BSBUnwGBCuWeysPIMm8DvQ
 - **apisim** (`cmd/apisim`) — simulador de API de terceiro: injeta taxa de
   erro (Fator B) e padrão temporal de falha (Fator C) configuráveis, no lugar
   de uma API real — necessário para rodar os experimentos de forma
-  controlada e reprodutível (Seção 7.2 do design experimental).
+  controlada e reprodutível (Seção 7 do design experimental).
 - **orchestrator** (`cmd/orchestrator`) — roda um plano de experimento (várias
   combinações de fatores × repetições) automaticamente: cada rodada é uma
   execução isolada e sequencial de apisim+consumer+producer (fila, porta e
@@ -61,7 +61,7 @@ experiments/
   gen_tasks.py      # gera tasks.json (semente fixa: sempre o mesmo conteúdo)
   prefix_analysis.py # análise por prefixo: quantas mensagens por execução bastam
 pilots/      # pilotos de calibração: plano, carga, dados brutos e relatório de cada um
-tasks.json   # carga de trabalho do producer: 1000 mensagens de ~100 bytes (Seção 7.1)
+tasks.json   # carga de trabalho do producer: 1000 mensagens de ~100 bytes (Seção 7)
 ```
 
 - `internal/backoff` — `strategy.go` define a interface `Strategy` e a
@@ -119,7 +119,7 @@ calibrados no piloto 03 (`pilots/03_calibracao_aimd_hpa`).
 | `HPA_SETPOINT` | Taxa de erro-alvo (nível 6) | `0.5` |
 | `HPA_WINDOW_SIZE` | Tamanho da janela observável, em tentativas (nível 6) | `50` |
 
-**Carga de trabalho do producer (Seção 7.1):**
+**Carga de trabalho do producer (Seção 7):**
 
 | Variável | Descrição | Padrão |
 |---|---|---|
@@ -223,7 +223,7 @@ go run ./cmd/orchestrator \
 `experiments/example_plan.json` é só um **exemplo/template** (3 rodadas, 1000
 mensagens cada, parâmetros calibrados por padrão) para validar o mecanismo — não é o
 plano de triagem nem o do experimento principal, que ainda dependem dos
-valores de calibração da Seção 7.3 e da escolha do desenho fatorial
+valores de calibração da Seção 7 e da escolha do desenho fatorial
 fracionado da triagem (Seção 8). Monte o plano real editando esse arquivo:
 `shared_env` vale para todas as rodadas (é onde entra a taxa de produção
 única — `PRODUCER_RATE` — decidida após a triagem, ver Seção 5); cada entrada
@@ -234,6 +234,13 @@ O orquestrador conta as mensagens do arquivo de tarefas (`TASKS_FILE`, padrão
 `tasks.json`) para saber quando uma rodada terminou de processar, sem depender
 da API de management do RabbitMQ (ele conta, no CSV de métricas da própria
 rodada, quantas mensagens distintas já têm um resultado final registrado).
+
+O diretório de saída (`-metrics-dir`) precisa estar vazio ou não existir: o
+orquestrador se recusa a rodar sobre resultados anteriores, porque o CSV por
+tentativa é aberto para acrescentar e misturaria dados de execuções diferentes.
+Cada execução também começa com a fila do RabbitMQ zerada (a fila
+`tasks_<run_id>` é apagada antes de começar, junto com qualquer mensagem que
+tenha sobrado) e a fila é apagada ao terminar.
 
 Ordem das execuções: embaralhada por padrão (Seção 8 do design experimental:
 ordem aleatorizada entre combinações). A semente vem de `-seed` (ou do relógio,
@@ -260,7 +267,7 @@ passe `-log-dir logs` e cada processo grava em
 
 ## Análise por prefixo: quantas mensagens por execução?
 
-Para escolher o volume de mensagens por execução no piloto (Seção 7.3), rode
+Para escolher o volume de mensagens por execução no piloto (Seção 7), rode
 algumas combinações com o `tasks.json` completo e recalcule as métricas da
 Seção 3 usando só as primeiras N mensagens de cada execução:
 

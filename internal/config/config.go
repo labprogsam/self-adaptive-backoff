@@ -39,11 +39,11 @@ type Config struct {
 	RunID       string
 	MetricsFile string
 
-	// Carga de trabalho do producer (Seção 7.1 / 4.2): publica as mensagens
+	// Carga de trabalho do producer (Seções 4.2 e 7): publica as mensagens
 	// de TasksFile no ritmo de ProducerRate msgs/s.
 	ProducerRate float64
 	// ProducerPoisson usa intervalos entre publicações exponencialmente
-	// distribuídos (chegada Poisson, Seção 7.1) em vez de intervalo fixo.
+	// distribuídos (chegada Poisson, Seção 7) em vez de intervalo fixo.
 	ProducerPoisson bool
 }
 

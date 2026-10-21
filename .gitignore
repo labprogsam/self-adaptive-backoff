@@ -9,3 +9,4 @@
 
 # Evidências dos pilotos (dados brutos versionados de propósito)
 !/pilots/**/*.csv
+!/experiments/**/*.csv

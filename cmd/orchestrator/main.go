@@ -21,7 +21,7 @@ func main() {
 	logDir := flag.String("log-dir", "", "diretório de saída dos logs de cada processo (vazio = sem logs)")
 	drainTimeout := flag.Duration("drain-timeout", 20*time.Minute, "tempo máximo de espera por rodada até todas as mensagens serem processadas")
 	repoRoot := flag.String("repo-root", ".", "diretório raiz do repositório (para compilar os binários)")
-	shuffle := flag.Bool("shuffle", true, "embaralha a ordem das execuções (Design_experimental.md, Seção 8.2)")
+	shuffle := flag.Bool("shuffle", true, "embaralha a ordem das execuções (Design_experimental.md, Seção 8)")
 	seed := flag.Int64("seed", 0, "semente do embaralhamento (0 = gera uma a partir do relógio; a usada fica em execution_order.csv)")
 	flag.Parse()
 

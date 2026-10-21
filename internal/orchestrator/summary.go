@@ -46,7 +46,7 @@ var summaryHeader = []string{
 	// níveis dos fatores A–E
 	"factor_a_strategy", "factor_b_error_rate", "factor_c_pattern",
 	"factor_d_producer_rate", "factor_e_max_retries",
-	// parâmetros fixados (Seção 4.1) e de calibração (Seção 7.3)
+	// parâmetros fixados e calibrados (Seção 5.2)
 	"base_backoff_ms", "max_backoff_ms", "min_backoff_ms",
 	"aimd_increment_ms", "aimd_decrease_factor", "hpa_setpoint", "hpa_window_size",
 	"http_timeout_ms", "producer_poisson", "tasks_file",

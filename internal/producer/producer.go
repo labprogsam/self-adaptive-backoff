@@ -63,7 +63,7 @@ func Run(cfg config.Config) error {
 }
 
 // nextInterval calcula o intervalo até a próxima publicação para a taxa
-// (mensagens/segundo) e o padrão de chegada configurados (Seção 7.1). Com
+// (mensagens/segundo) e o padrão de chegada configurados (Seção 7). Com
 // poisson=true, o intervalo é exponencialmente distribuído com média
 // 1/rate, simulando chegadas independentes (Poisson); com poisson=false, o
 // intervalo é fixo em 1/rate.

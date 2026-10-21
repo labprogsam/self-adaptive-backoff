@@ -1,5 +1,5 @@
 // Package apisim implementa o simulador de API de terceiro descrito em
-// Design_experimental.md, Seção 7.2: um serviço HTTP que decide, por
+// Design_experimental.md, Seção 7: um serviço HTTP que decide, por
 // configuração, se cada requisição recebida responde com sucesso ou falha,
 // segundo a taxa de erro (Fator B) e o padrão temporal de falha (Fator C),
 // com latência de resposta configurável (Seção 4.2).
@@ -32,7 +32,7 @@ type Config struct {
 	Pattern string
 
 	// Padrão outage: ciclos de HealthyWindow (taxa ErrorRate) seguidos de
-	// OutageWindow com 100% de falha (Seção 7.2).
+	// OutageWindow com 100% de falha (Seção 7).
 	HealthyWindow time.Duration
 	OutageWindow  time.Duration
 

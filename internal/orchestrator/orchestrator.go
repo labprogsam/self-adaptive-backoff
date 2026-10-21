@@ -30,7 +30,7 @@ type Config struct {
 	// cmd/producer, cmd/apisim) são compilados — por padrão, o diretório
 	// de trabalho atual (o orquestrador espera ser rodado da raiz do repo).
 	RepoRoot string
-	// Shuffle embaralha a ordem das execuções (Seção 8.2) usando Seed. A
+	// Shuffle embaralha a ordem das execuções (Seção 8) usando Seed. A
 	// ordem usada é gravada em <MetricsDir>/execution_order.csv.
 	Shuffle bool
 	Seed    int64
@@ -46,6 +46,14 @@ func Run(cfg Config) error {
 		return err
 	}
 	executions := Expand(plan)
+
+	// O CSV por tentativa é aberto para acrescentar (internal/metrics): rodar de
+	// novo num diretório com resultados misturaria tentativas antigas e novas, e
+	// waitDrained daria a execução por concluída na hora ao ver as mensagens
+	// antigas. Por isso o diretório de saída precisa estar vazio.
+	if err := ensureEmptyDir(cfg.MetricsDir); err != nil {
+		return err
+	}
 
 	for _, dir := range []string{cfg.BinDir, cfg.MetricsDir, cfg.LogDir} {
 		if dir == "" {
@@ -244,6 +252,18 @@ func runExecution(cfg Config, bins binaries, sharedEnv map[string]string, ex Exe
 	result.Apisim = &info
 	_ = os.Remove(apisimInfoFile)
 
+	// Fila nova por execução: apaga qualquer resto de uma execução anterior com
+	// o mesmo nome antes de começar, e apaga a fila ao terminar — o defer é
+	// registrado antes do do consumer, então roda depois de o consumer parar.
+	if err := deleteQueue(consumerCfg.AMQPUrl, queueName); err != nil {
+		return fail("error", "%v", err)
+	}
+	defer func() {
+		if err := deleteQueue(consumerCfg.AMQPUrl, queueName); err != nil {
+			log.Printf("[%s] aviso: %v", ex.RunID, err)
+		}
+	}()
+
 	consumerProc, err := startProcess(bins.consumer, cfg.LogDir, ex.RunID+"_consumer", consumerEnv)
 	if err != nil {
 		return fail("error", "erro ao iniciar consumer: %v", err)
@@ -313,7 +333,7 @@ func mergeMaps(maps ...map[string]string) map[string]string {
 }
 
 // writeExecutionOrder grava a ordem em que as execuções são iniciadas, junto
-// com a semente usada, para que a aleatorização (Seção 8.2) fique registrada
+// com a semente usada, para que a aleatorização (Seção 8) fique registrada
 // e possa ser reproduzida.
 func writeExecutionOrder(path string, executions []Execution, cfg Config) error {
 	f, err := os.Create(path)
@@ -362,4 +382,19 @@ func envLookup(env []string) func(string) string {
 		}
 	}
 	return func(k string) string { return m[k] }
+}
+
+// ensureEmptyDir falha se dir já existe e tem algum conteúdo.
+func ensureEmptyDir(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("erro ao ler diretório de saída %q: %w", dir, err)
+	}
+	if len(entries) > 0 {
+		return fmt.Errorf("diretório de saída %q já tem conteúdo (%d itens): use outro -metrics-dir ou remova o diretório antes de rodar", dir, len(entries))
+	}
+	return nil
 }

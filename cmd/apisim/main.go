@@ -1,5 +1,5 @@
 // Command apisim é o simulador de API de terceiro usado nos experimentos
-// (Design_experimental.md, Seção 7.2): injeta falhas e latência configuráveis
+// (Design_experimental.md, Seção 7): injeta falhas e latência configuráveis
 // no lugar de uma API real, para que os Fatores B e C sejam controlados de
 // forma determinística entre execuções.
 package main

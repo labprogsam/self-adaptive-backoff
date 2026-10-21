@@ -2,7 +2,7 @@
 
 O payload é mantido pequeno de propósito: nem o consumer nem o apisim
 validam o conteúdo além de ser um objeto JSON, então o tamanho não
-influencia o que o experimento mede (Design_experimental.md, Seção 7.1).
+influencia o que o experimento mede (Design_experimental.md, Seção 7).
 
 Semente fixa para o arquivo ser idêntico se for regenerado.
 Uso (a partir da raiz do repositório): python3 experiments/gen_tasks.py tasks.json

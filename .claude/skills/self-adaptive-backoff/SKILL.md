@@ -29,8 +29,8 @@ internal/metrics/           # writer do CSV "por tentativa" (Seção 8 do design
 internal/orchestrator/      # roda um plano (JSON) de rodadas × repetições, paralelo entre rodadas
 experiments/example_plan.json # plano de exemplo do orquestrador (template, não é o plano real)
 experiments/gen_tasks.py    # gera tasks.json (semente fixa, saída idêntica a cada execução)
-experiments/prefix_analysis.py # métricas da Seção 3 recalculadas por prefixo de N mensagens (piloto, Seção 7.3)
-pilots/                     # pilotos de calibração (Seção 7.3): um diretório por piloto, ver pilots/README.md
+experiments/prefix_analysis.py # métricas da Seção 3 recalculadas por prefixo de N mensagens (piloto, Seção 7)
+pilots/                     # pilotos de calibração (Seção 7): um diretório por piloto, ver pilots/README.md
 tasks.json                  # carga do producer: 3000 mensagens de ~100 bytes, fixas entre execuções
 Design_experimental.md      # roteiro experimental (Raj Jain) — objetivos, métricas, fatores, design
 ```
@@ -75,7 +75,7 @@ métricas).
   a fórmula pretende. Se for mexer em `hpa.go`, rode `go test ./test/backoff/...`
   depois — os testes fixam esse comportamento.
 - **`Qos(1)` e uma única instância de consumidor são deliberadamente fixos** — fora do
-  escopo do estudo (Seção 1.3 e 5). Não alterar como "otimização" sem checar se isso
+  escopo do estudo (Seção 5.2). Não alterar como "otimização" sem checar se isso
   invalida um fator já definido como controlado.
 - **`nack` sem requeue em falha definitiva é comportamento fixo**, para não travar a fila
   com mensagem "envenenada" — preserve ao adicionar estratégias.
@@ -87,7 +87,7 @@ métricas).
   crie uma 5ª categoria sem atualizar o design experimental primeiro.
 - **`internal/apisim` é um serviço separado**, sem depender de `internal/config` nem
   `internal/apiclient` — tem seu próprio `LoadConfig()`. Mantenha assim: ele representa a
-  "API de terceiro", não faz parte do sistema sob teste (Seção 1.3).
+  "API de terceiro", não faz parte do sistema sob teste (Seção 7).
 - Sem dependências externas além de `github.com/rabbitmq/amqp091-go` (ver `go.mod`) — tudo
   que foi construído (apisim, métricas CSV, orchestrator) usa só stdlib.
 - **A concorrência do orquestrador fica só entre rodadas, nunca dentro de uma rodada.**
@@ -106,12 +106,17 @@ métricas).
   `internal/orchestrator/process.go:freePort`) e seu próprio `METRICS_FILE`. Um único
   broker RabbitMQ é compartilhado entre rodadas paralelas (filas diferentes, mesma
   conexão/broker) — isso é intencional, não suba um broker por rodada.
+- **Nenhum resto entre execuções:** a fila `tasks_<run_id>` é apagada antes de cada
+  execução começar (com qualquer mensagem que tenha sobrado de uma execução anterior com o
+  mesmo `run_id`) e de novo ao terminar (`internal/orchestrator/queue.go`); e o orquestrador
+  recusa um `-metrics-dir` que já tenha conteúdo, porque o CSV por tentativa é aberto em modo
+  append. Não remova essas proteções para "reaproveitar" um diretório de resultados.
 - **O orquestrador detecta o fim de uma rodada pelo próprio CSV de métricas**
   (`internal/orchestrator/drain.go:waitDrained`), contando mensagens distintas com
   `final_result` preenchido, não pela API de management do RabbitMQ. O total esperado vem
   do número de itens do arquivo de tarefas (`TASKS_FILE`, padrão `tasks.json`).
 - **O producer sempre lê `tasks.json`** — não existe mais modo de geração sintética. O
-  arquivo tem 3000 pedidos de ~100 bytes (Seção 7.1: payload pequeno e volume fixos entre
+  arquivo tem 1000 pedidos de ~100 bytes (Seção 7: payload pequeno e volume fixos entre
   execuções — pequeno porque nada valida o conteúdo além de ser um objeto JSON). Não o regenere com conteúdo diferente no meio de uma campanha de
   experimentos: todas as rodadas comparadas precisam da mesma carga. O arquivo é gerado
   por `experiments/gen_tasks.py` (`python3 experiments/gen_tasks.py tasks.json`).
@@ -146,8 +151,10 @@ go run ./cmd/orchestrator -plan experiments/example_plan.json -parallel 4
    o valor aceito por `BACKOFF_STRATEGY`.
 3. Se a estratégia tiver parâmetros próprios, adicioná-los a `backoff.Params`, a
    `config.Config` (com env var e default), e à tabela do README.
-4. Atualizar a tabela de fatores em `Design_experimental.md` (Seção 5) e, se precisar de
-   calibração antes do experimento principal, a Seção 7.3.
+4. Atualizar `Design_experimental.md`: o nível novo na tabela de fatores (Seção 5.1) e os
+   parâmetros próprios na tabela de parâmetros fixados (Seção 5.2, com valor, motivo e
+   evidência). Se os parâmetros precisarem de calibração, rodar um piloto em `pilots/`
+   (ver abaixo) antes do experimento principal.
 5. Escrever um teste em `test/backoff/` (`*_test.go`, pacote `backoff_test`) cobrindo o cálculo do delay e o
    comportamento de piso/teto — veja `test/backoff/aimd_test.go`/`hpa_test.go`.
 
@@ -197,22 +204,43 @@ aleatória, uma execução longa (ex.: HPA) pode cair no fim e alongar o tempo t
 o custo aceito da aleatorização.
 
 **Montar/editar um plano de experimento para o orquestrador:** edite um JSON com
-`repetitions`, `shared_env` (vale para todas as rodadas — é onde fica `PRODUCER_RATE`, a
-taxa única decidida após a triagem, Seção 5) e `rounds` (uma entrada por combinação de
-fatores, com overrides em `consumer_env`/`apisim_env`/`producer_env`). Veja
-`experiments/example_plan.json` como referência de formato — não é o plano real, é só
-para validar o mecanismo. Ao montar o plano da triagem ou do experimento principal de
-verdade, gere os `rounds` programaticamente (loop sobre os níveis dos Fatores A/B/C) em
-vez de escrever as dezenas de combinações à mão.
+`repetitions`, `shared_env` (vale para todas as rodadas) e `rounds` (uma entrada por
+combinação de fatores, com overrides em `consumer_env`/`apisim_env`/`producer_env`). Os
+parâmetros fixados e calibrados já são os defaults (`internal/config`, `internal/apisim`),
+então um plano só precisa definir os fatores variados — `BACKOFF_STRATEGY` e `MAX_RETRIES`
+(A, E) no consumer, `APISIM_ERROR_RATE` e `APISIM_PATTERN` (B, C) no apisim. Gere os
+`rounds` programaticamente, com um `gen_plan.py` ao lado do `plan.json`, como em
+`experiments/01_triagem/gen_plan.py`. `experiments/example_plan.json` é só um exemplo de
+formato.
 
-## O que falta para rodar o experimento completo
+## Estado do experimento
 
-A infraestrutura de software está pronta: estratégias, simulador, carga configurável,
-coleta por tentativa, e um orquestrador que roda rodadas isoladas em paralelo a partir de
-um plano. Ainda não existe neste repositório:
-- O plano real (JSON) da triagem e do experimento principal — `experiments/example_plan.json`
-  é só um template de 3 rodadas; falta decidir o desenho fatorial fracionado da triagem
-  (Seção 8) e, depois dela, os valores calibrados (Seção 7.3: taxa de produção única,
-  ganhos do AIMD, setpoint/janela do HPA) antes de gerar os `rounds` de verdade.
-- Qualquer análise/agregação dos CSVs gerados (Seção 9) — hoje a saída é só o dado bruto
-  por tentativa (mais o resumo de status/duração por rodada do orquestrador).
+Concluído (evidências versionadas no repositório):
+- **Calibração** — pilotos 01–03 em `pilots/`: volume de 1.000 mensagens, escala de tempo
+  1/5, taxa de produção de 2,5 msgs/s (Fator D fixado), parâmetros do AIMD e do HPA. Os
+  valores estão na tabela de parâmetros fixados (Seção 5.2 do `Design_experimental.md`) e
+  são os defaults do código.
+- **Triagem (fase 1)** — `experiments/01_triagem/`: fatorial completo A × B × C × E, 3
+  repetições, 500 mensagens. O critério de alocação de variação não foi atendido (E + A×E
+  explicam 8,5% da taxa de sucesso e 10,4% das tentativas por mensagem), então **E é fator
+  do experimento principal**. O erro experimental pequeno (0,2%–0,6% da variação) justifica
+  n = 10 repetições.
+- **Infraestrutura** — registro por execução (`runs_summary.csv`, `failure_windows.csv`),
+  ordem embaralhada com semente registrada, isolamento entre execuções (fila apagada antes e
+  depois, recusa de `-metrics-dir` com conteúdo), RabbitMQ com `--restart unless-stopped`.
+
+Falta:
+- **Ensaio geral** — rodar o plano do experimento principal com 2–3 repetições (~1h) para
+  confirmar a estimativa de tempo (~7,2h), o pipeline completo e a variação entre execuções
+  no regime não saturado. Criar como `experiments/02_ensaio_geral/`, seguindo a estrutura da
+  triagem.
+- **Experimento principal (fase 2)** — fatorial completo A × B × C × E (108 combinações),
+  10 repetições, 1.000 mensagens por execução (~7,2h com `-parallel 20`), em
+  `experiments/03_experimento_principal/`. Manter a máquina sem suspender durante a execução:
+  com o WSL desligado, nada roda.
+- **Análise (Seção 9)** — scripts de agregação sobre os dados do experimento principal:
+  média, mediana, p95/p99 e IC95% por combinação (sobre as execuções, não sobre mensagens),
+  comparação por sobreposição de IC, Pareto espera × sobrecarga e séries temporais de
+  recuperação alinhadas por `failure_windows.csv`. Hoje existem `experiments/prefix_analysis.py`
+  (escolha do volume) e `experiments/01_triagem/analyze.py` (alocação de variação), que servem
+  de base.
