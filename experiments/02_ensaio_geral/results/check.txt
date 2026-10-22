@@ -1,0 +1,16 @@
+1. Execuções
+   216/216 registradas; status: {'ok': 216}
+
+2. Tempo
+   duração total do ensaio (2 repetições): 1.85 h
+   execução mais longa: hpa_b50_outage_e10_rep02 (50.4 min)
+   projeção do experimento principal (10 repetições, concorrência 20): 7.4 h de trabalho dividido entre as vagas (o tempo real tende a ficar um pouco acima, pelas execuções longas no fim)
+
+3. Cronograma de falhas
+   execuções com indisponibilidade: 108; sem janelas registradas: 0
+   tentativas dentro de janelas de indisponibilidade: 132975; falharam: 132975 (100.00%, esperado 100%)
+
+4. Variação entre repetições (taxa de sucesso)
+   desvio padrão por combinação: mediana 0.14 p.p., percentil 90 0.78 p.p., máximo 2.05 p.p.
+   IC95% esperado com 10 repetições (percentil 90): ±0.56 p.p.
+   (com só 2 repetições por combinação, o desvio de cada uma é uma estimativa grosseira)
