@@ -10,3 +10,6 @@
 # Evidências dos pilotos (dados brutos versionados de propósito)
 !/pilots/**/*.csv
 !/experiments/**/*.csv
+
+# Notas pessoais (fora do repositório)
+/estrutura.md
